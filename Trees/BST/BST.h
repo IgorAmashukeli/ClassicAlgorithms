@@ -436,7 +436,8 @@ public:
     }
     std::pair<Iterator, bool> Insert(const ValueType& key_value) {
 
-        return InsertNode(root_, key_value);
+        return InsertNode(root_, key_value, nullptr, false, std::addressof(rend_node_),
+                          std::addressof(end_node_));
     }
 
     Iterator Find(const K& key) {
@@ -636,13 +637,23 @@ private:
         return node;
     }
 
+    void ConnectPrevNext(Node<K, V>* node, BaseNode<K, V>* prev, BaseNode<K, V>* next) {
+        node->GetNext() = next;
+        next->GetPrev() = node;
+
+        node->GetPrev() = prev;
+        prev->GetNext() = node;
+    }
+
     std::pair<Iterator, bool> InsertNode(const std::unique_ptr<Node<K, V>>& node,
-                                         Node<K, V>* parent, bool left,
-                                         const ValueType& key_value) {
+                                         const ValueType& key_value, Node<K, V>* parent, bool left,
+                                         BaseNode<K, V>* current_prev,
+                                         BaseNode<K, V>* current_next) {
         if ((node == nullptr) && (parent == nullptr)) {
             root_ = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
                                                  std::addressof(rend_node_),
                                                  std::addressof(end_node_), 1);
+            ConnectPrevNext(root_.get(), current_prev, current_next);
             return {Iterator(root_.get()), true};
         }
 
@@ -650,6 +661,8 @@ private:
             parent->GetLeft() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
                                                              nullptr, nullptr, 1);
             parent->GetLeft()->GetParent() = parent;
+
+            ConnectPrevNext(parent->GetLeft().get(), current_prev, current_next);
 
             return {Iterator(parent->GetLeft().get(), true)};
         }
@@ -659,11 +672,21 @@ private:
                                                               nullptr, nullptr, 1);
             parent->GetRight()->GetParent() = parent;
 
+            ConnectPrevNext(parent->GetRight().get(), current_prev, current_next);
+
             return {Iterator(parent->GetRight().get(), true)};
         }
 
-        if ((node != nullptr) && Equivalent(node.get(), key_value.first)) {
+        if ((node != nullptr) && Equivalent(node->GetKey(), key_value.first)) {
+            return {Iterator(node.get()), false};
         }
+
+        if ((node != nullptr) && (key_value.first < node->GetKey())) {
+            return InsertNode(node.GetLeft(), key_value, node.get(), true, current_prev,
+                              node.get());
+        }
+
+        return InsertNode(node.GetRight(), key_value, node.get(), false, node.get(), current_next);
     }
 
     std::unique_ptr<Node<K, V>> root_;
