@@ -398,8 +398,18 @@ public:
 
     BST() = default;
     BST(const BST& other) {
+        auto node = std::addressof(rend_node_);
+        root_ = Copy(other, node);
+        ConnectEndNodesAfterCopy(node);
     }
     BST& operator=(const BST& other) {
+        if (this != std::addressof(other)) {
+            Clear();
+            auto node = std::addressof(rend_node_);
+            root_ = Copy(other.root_, node);
+            ConnectEndNodesAfterCopy(node);
+        }
+        return *this;
     }
     BST(BST&& other) {
         Swap(other);
@@ -423,6 +433,10 @@ public:
     void Swap(const BST<K, V>& other) {
         std::swap(root_, other.root_);
         ConnectEndNodesAfterSwap(other);
+    }
+    std::pair<Iterator, bool> Insert(const ValueType& key_value) {
+
+        return InsertNode(root_, key_value);
     }
 
     Iterator Find(const K& key) {
@@ -547,7 +561,7 @@ public:
     }
 
 private:
-    Node<K, V>* FindNode(const K& key, const std::unique_ptr<Node<K, V>>& node) {
+    Node<K, V>* FindNode(const K& key, const std::unique_ptr<Node<K, V>>& node) const {
         if (node == nullptr) {
             return nullptr;
         }
@@ -561,7 +575,7 @@ private:
     }
 
     Node<K, V>* FindLowerBound(const K& key, const std::unique_ptr<Node<K, V>>& node,
-                               Node<K, V>* best_bound) {
+                               Node<K, V>* best_bound) const {
         if (node == nullptr) {
             return best_bound;
         }
@@ -583,6 +597,72 @@ private:
             std::swap(end_node_.GetPrev(), other.end_node_.GetPrev());
             end_node_.GetPrev()->GetNext() = std::addressof(end_node_);
             other.end_node_.GetPrev()->GetNext() = std::addressof(other.end_node_);
+        }
+    }
+
+    void ConnectEndNodesAfterCopy(BaseNode<K, V>* max_node) {
+        if (root_ != nullptr) {
+            max_node->GetNext() = std::addressof(end_node_);
+            end_node_->GetPrev() = std::addressof(max_node);
+        }
+    }
+
+    std::unique_ptr<Node<K, V>> Copy(const std::unique_ptr<Node<K, V>>& other_node,
+                                     BaseNode<K, V>*& prev_node) {
+        if (other_node == nullptr) {
+            return nullptr;
+        }
+
+        std::unique_ptr<Node<K, V>> lhs = Copy(other_node->GetLeft(), prev_node);
+
+        std::unique_ptr<Node<K, V>> node = std::make_unique<Node<K, V>>(
+            other_node->GetKey(), other_node->GetValue(), nullptr, nullptr, other_node->GetSize());
+
+        node->GetLeft() = std::move(lhs);
+        if (node->GetLeft() != nullptr) {
+            node->GetLeft()->GetParent() = node.get();
+        }
+
+        prev_node->GetNext() = node.get();
+        node.get()->GetPrev() = prev_node;
+
+        prev_node = node.get();
+
+        node->GetRight() = Copy(other_node->GetRight(), prev_node);
+        if (node->GetRight() != nullptr) {
+            node->GetRight()->GetParent() = node.get();
+        }
+
+        return node;
+    }
+
+    std::pair<Iterator, bool> InsertNode(const std::unique_ptr<Node<K, V>>& node,
+                                         Node<K, V>* parent, bool left,
+                                         const ValueType& key_value) {
+        if ((node == nullptr) && (parent == nullptr)) {
+            root_ = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
+                                                 std::addressof(rend_node_),
+                                                 std::addressof(end_node_), 1);
+            return {Iterator(root_.get()), true};
+        }
+
+        if ((node == nullptr) && (parent != nullptr) && left) {
+            parent->GetLeft() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
+                                                             nullptr, nullptr, 1);
+            parent->GetLeft()->GetParent() = parent;
+
+            return {Iterator(parent->GetLeft().get(), true)};
+        }
+
+        if ((node == nullptr) && (parent != nullptr) && !left) {
+            parent->GetRight() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
+                                                              nullptr, nullptr, 1);
+            parent->GetRight()->GetParent() = parent;
+
+            return {Iterator(parent->GetRight().get(), true)};
+        }
+
+        if ((node != nullptr) && Equivalent(node.get(), key_value.first)) {
         }
     }
 
