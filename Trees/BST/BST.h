@@ -426,18 +426,72 @@ public:
     }
 
     Iterator Find(const K& key) {
-        auto node = FindNode(key);
+        auto node = FindNode(key, root_);
         if (node == nullptr) {
             return End();
         }
         return Iterator(node);
     }
     ConstIterator Find(const K& key) const {
-        auto node = FindNode(key);
+        auto node = FindNode(key, root_);
         if (node == nullptr) {
             return End();
         }
         return ConstIterator(node);
+    }
+    Iterator LowerBound(const K& key) {
+        auto node = FindLowerBound(key, root_, nullptr);
+        if (node == nullptr) {
+            return End();
+        }
+        return Iterator(node);
+    }
+    ConstIterator LowerBound(const K& key) const {
+        auto node = FindLowerBound(key, root_, nullptr);
+        if (node == nullptr) {
+            return End();
+        }
+        return ConstIterator(node);
+    }
+    Iterator UpperBound(const K& key) {
+        auto node = FindLowerBound(key, root_, nullptr);
+        if (node == nullptr) {
+            return End();
+        }
+        if (Equivalent(node->GetKey(), key)) {
+            return Iterator(node->GetNext());
+        }
+        return Iterator(node);
+    }
+    ConstIterator UpperBound(const K& key) const {
+        auto node = FindLowerBound(key, root_, nullptr);
+        if (node == nullptr) {
+            return End();
+        }
+        if (Equivalent(node->GetKey(), key)) {
+            return ConstIterator(node->GetNext());
+        }
+        return ConstIterator(node);
+    }
+    std::pair<Iterator, Iterator> EqualRange(const K& key) {
+        auto node = FindLowerBound(key, root_, nullptr);
+        if (node == nullptr) {
+            return {End(), End()};
+        }
+        if (Equivalent(node->GetKey(), key)) {
+            return {Iterator(node), Iterator(node->GetNext())};
+        }
+        return {Iterator(node), Iterator(node)};
+    }
+    std::pair<ConstIterator, ConstIterator> EqualRange(const K& key) const {
+        auto node = FindLowerBound(key, root_, nullptr);
+        if (node == nullptr) {
+            return {End(), End()};
+        }
+        if (Equivalent(node->GetKey(), key)) {
+            return {ConstIterator(node), ConstIterator(node->GetNext())};
+        }
+        return {ConstIterator(node), ConstIterator(node)};
     }
     bool Contains(const K& key) const {
         return FindNode(key) != nullptr;
@@ -493,6 +547,33 @@ public:
     }
 
 private:
+    Node<K, V>* FindNode(const K& key, const std::unique_ptr<Node<K, V>>& node) {
+        if (node == nullptr) {
+            return nullptr;
+        }
+        if (Equivalent(key, node->GetKey())) {
+            return node;
+        }
+        if (key < node->GetKey()) {
+            return FindNode(key, node->GetLeft());
+        }
+        return FindNode(key, node->GetRight());
+    }
+
+    Node<K, V>* FindLowerBound(const K& key, const std::unique_ptr<Node<K, V>>& node,
+                               Node<K, V>* best_bound) {
+        if (node == nullptr) {
+            return best_bound;
+        }
+        if (Equivalent(key, node->GetKey())) {
+            return node;
+        }
+        if (key < node->GetKey()) {
+            return FindLowerBound(key, node->GetLeft(), node.get());
+        }
+        return FindLowerBound(key, node->GetRight(), best_bound);
+    }
+
     void ConnectEndNodesAfterSwap(const BST<K, V>& other) {
         if (root_ != nullptr) {
             std::swap(rend_node_.GetNext(), other.rend_node_.GetNext());
@@ -509,3 +590,22 @@ private:
     EndNode<K, V> rend_node_{nullptr, std::addressof(end_node_)};
     EndNode<K, V> end_node_{std::addressof(rend_node_), nullptr};
 };
+
+template <typename K, typename V>
+bool operator==(const BST<K, V>& lhs, const BST<K, V>& rhs) {
+    if (lhs.Size() != rhs.Size()) {
+        return false;
+    }
+
+    for (auto it = lhs.Begin(), jt = rhs.Begin(); it != lhs.End(); ++it, ++jt) {
+        if (!Equivalent(it->first, jt->first) || (it->second != jt->second)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+template <typename K, typename V>
+bool operator!=(const BST<K, V>& lhs, const BST<K, V>& rhs) {
+    return (lhs != rhs);
+}
