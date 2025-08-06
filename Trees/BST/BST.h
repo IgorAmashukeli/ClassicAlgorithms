@@ -206,8 +206,16 @@ public:
 
     private:
         void Inc() {
+            if (node_ != nullptr) {
+                node_ = node_->GetNext();
+            }
         }
         void Dec() {
+            if (node_ != nullptr && !(node_->GetPrev()->IsEndNode())) {
+                node_ = node_->GetPrev();
+            } else {
+                node_ = nullptr;
+            }
         }
         BaseNode<K, V>* node_ = nullptr;
     };
@@ -258,8 +266,16 @@ public:
 
     private:
         void Inc() {
+            if (node_ != nullptr) {
+                node_ = node_->GetNext();
+            }
         }
         void Dec() {
+            if (node_ != nullptr && !(node_->GetPrev()->IsEndNode())) {
+                node_ = node_->GetPrev();
+            } else {
+                node_ = nullptr;
+            }
         }
         const BaseNode<K, V>* node_ = nullptr;
     };
@@ -310,8 +326,16 @@ public:
 
     private:
         void Inc() {
+            if (node_ != nullptr) {
+                node_ = node_->GetPrev();
+            }
         }
         void Dec() {
+            if (node_ != nullptr && !(node_->GetNext()->IsEndNode())) {
+                node_ = node_->GetNext();
+            } else {
+                node_ = nullptr;
+            }
         }
         BaseNode<K, V>* node_ = nullptr;
     };
@@ -362,8 +386,16 @@ public:
 
     private:
         void Inc() {
+            if (node_ != nullptr) {
+                node_ = node_->GetPrev();
+            }
         }
         void Dec() {
+            if (node_ != nullptr && !(node_->GetNext()->IsEndNode())) {
+                node_ = node_->GetNext();
+            } else {
+                node_ = nullptr;
+            }
         }
         const BaseNode<K, V>* node_ = nullptr;
     };
