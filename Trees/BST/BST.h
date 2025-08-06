@@ -3,6 +3,11 @@
 #include <memory>
 #include <utility>
 
+template <typename K>
+bool Equivalent(const K& key_1, const K& key_2) {
+    return !(key_1 < key_2) && (!(key_2 < key_1));
+}
+
 template <typename K, typename V>
 struct Node;
 
@@ -150,15 +155,6 @@ public:
     using Pointer = ValueType*;
     using ConstReference = const ValueType&;
     using ConstPointer = const ValueType*;
-
-    BST() = default;
-    BST(const BST& other) {
-    }
-    BST& operator=(const BST& other) {
-    }
-    BST(BST&& other) = default;
-    BST& operator=(BST&& other) = default;
-    ~BST() = default;
 
     class Iterator {
     public:
@@ -400,7 +396,115 @@ public:
         const BaseNode<K, V>* node_ = nullptr;
     };
 
+    BST() = default;
+    BST(const BST& other) {
+    }
+    BST& operator=(const BST& other) {
+    }
+    BST(BST&& other) {
+        Swap(other);
+    }
+    BST& operator=(BST&& other) {
+        if (this != std::addressof(other)) {
+            Swap(other);
+            other.Clear();
+        }
+        return *this;
+    }
+    ~BST() = default;
+
+    void Clear() {
+        root_ = nullptr;
+        rend_node_.GetPrev() = nullptr;
+        rend_node_.GetNext() = std::addressof(end_node_);
+        end_node_.GetNext() = nullptr;
+        end_node_.GetPrev() = std::addressof(rend_node_);
+    }
+    void Swap(const BST<K, V>& other) {
+        std::swap(root_, other.root_);
+        ConnectEndNodesAfterSwap(other);
+    }
+
+    Iterator Find(const K& key) {
+        auto node = FindNode(key);
+        if (node == nullptr) {
+            return End();
+        }
+        return Iterator(node);
+    }
+    ConstIterator Find(const K& key) const {
+        auto node = FindNode(key);
+        if (node == nullptr) {
+            return End();
+        }
+        return ConstIterator(node);
+    }
+    bool Contains(const K& key) const {
+        return FindNode(key) != nullptr;
+    }
+    size_t Count(const K& key) const {
+        return static_cast<size_t>(Contains(key));
+    }
+    Iterator Begin() noexcept {
+        return Iterator(rend_node_.GetNext());
+    }
+    ConstIterator Begin() const noexcept {
+        return ConstIterator(rend_node_.GetNext());
+    }
+    Iterator End() noexcept {
+        return Iterator(std::addressof(end_node_));
+    }
+    ConstIterator End() const noexcept {
+        return ConstIterator(std::addressof(end_node_));
+    }
+    ConstIterator CBegin() const noexcept {
+        return ConstIterator(rend_node_.GetNext());
+    }
+    ConstIterator CEnd() const noexcept {
+        return ConstIterator(std::addressof(end_node_));
+    }
+    ReverseIterator RBegin() noexcept {
+        return ReverseIterator(end_node_.GetPrev());
+    }
+    ConstReverseIterator RBegin() const noexcept {
+        return ConstReverseIterator(end_node_.GetPrev());
+    }
+    ReverseIterator REnd() noexcept {
+        return ReverseIterator(std::addressof(rend_node_));
+    }
+    ConstReverseIterator REnd() const noexcept {
+        return ConstReverseIterator(std::addressof(rend_node_));
+    }
+    ConstReverseIterator CRBegin() const noexcept {
+        return ConstReverseIterator(end_node_.GetPrev());
+    }
+    ConstReverseIterator CREnd() const noexcept {
+        return ConstReverseIterator(std::addressof(rend_node_));
+    }
+
+    size_t Size() const {
+        if (root_ == nullptr) {
+            return 0;
+        }
+        return root_->GetSize();
+    }
+    bool Empty() const {
+        return (root_ == nullptr);
+    }
+
 private:
+    void ConnectEndNodesAfterSwap(const BST<K, V>& other) {
+        if (root_ != nullptr) {
+            std::swap(rend_node_.GetNext(), other.rend_node_.GetNext());
+            rend_node_.GetNext()->GetPrev() = std::addressof(rend_node_);
+            other.rend_node_.GetNext()->GetPrev() = std::addressof(other.rend_node_);
+
+            std::swap(end_node_.GetPrev(), other.end_node_.GetPrev());
+            end_node_.GetPrev()->GetNext() = std::addressof(end_node_);
+            other.end_node_.GetPrev()->GetNext() = std::addressof(other.end_node_);
+        }
+    }
+
     std::unique_ptr<Node<K, V>> root_;
     EndNode<K, V> rend_node_{nullptr, std::addressof(end_node_)};
     EndNode<K, V> end_node_{std::addressof(rend_node_), nullptr};
