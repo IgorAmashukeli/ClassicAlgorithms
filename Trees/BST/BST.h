@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <stdexcept>
 #include <utility>
 
 template <typename K>
@@ -130,6 +131,33 @@ struct EndNode : public BaseNode<K, V> {
 
     EndNode(BaseNode<K, V>* prev, BaseNode<K, V>* next) : prev_(prev), next_(next) {
     }
+    const K& GetKey() const {
+        throw std::out_of_range("Out of range!");
+    }
+    const V& GetValue() const {
+        throw std::out_of_range("Out of range!");
+    }
+    V& GetValue() {
+        throw std::out_of_range("Out of range!");
+    }
+    const std::unique_ptr<Node<K, V>>& GetLeft() const {
+        throw std::out_of_range("Out of range!");
+    }
+    std::unique_ptr<Node<K, V>>& GetLeft() {
+        throw std::out_of_range("Out of range!");
+    }
+    const std::unique_ptr<Node<K, V>>& GetRight() const {
+        throw std::out_of_range("Out of range!");
+    }
+    std::unique_ptr<Node<K, V>>& GetRight() {
+        throw std::out_of_range("Out of range!");
+    }
+    Node<K, V>* GetParent() const {
+        throw std::out_of_range("Out of range!");
+    }
+    Node<K, V>*& GetParent() {
+        throw std::out_of_range("Out of range!");
+    }
     BaseNode<K, V>* GetPrev() const {
         return prev_;
     }
@@ -141,6 +169,18 @@ struct EndNode : public BaseNode<K, V> {
     }
     BaseNode<K, V>*& GetNext() {
         return next_;
+    }
+    size_t GetSize() const {
+        throw std::out_of_range("Out of range!");
+    }
+    size_t& GetSize() {
+        throw std::out_of_range("Out of range!");
+    }
+    const std::pair<const K, V>& GetKeyValue() const {
+        throw std::out_of_range("Out of range!");
+    }
+    std::pair<const K, V>& GetKeyValue() {
+        throw std::out_of_range("Out of range!");
     }
     bool IsEndNode() const {
         return true;
@@ -445,28 +485,28 @@ public:
         if (node == nullptr) {
             return End();
         }
-        return Iterator(node);
+        return Iterator{node};
     }
     ConstIterator Find(const K& key) const {
         auto node = FindNode(key, root_);
         if (node == nullptr) {
             return End();
         }
-        return ConstIterator(node);
+        return ConstIterator{node};
     }
     Iterator LowerBound(const K& key) {
         auto node = FindLowerBound(key, root_, nullptr);
         if (node == nullptr) {
             return End();
         }
-        return Iterator(node);
+        return Iterator{node};
     }
     ConstIterator LowerBound(const K& key) const {
         auto node = FindLowerBound(key, root_, nullptr);
         if (node == nullptr) {
             return End();
         }
-        return ConstIterator(node);
+        return ConstIterator{node};
     }
     Iterator UpperBound(const K& key) {
         auto node = FindLowerBound(key, root_, nullptr);
@@ -474,9 +514,9 @@ public:
             return End();
         }
         if (Equivalent(node->GetKey(), key)) {
-            return Iterator(node->GetNext());
+            return Iterator{node->GetNext()};
         }
-        return Iterator(node);
+        return Iterator{node};
     }
     ConstIterator UpperBound(const K& key) const {
         auto node = FindLowerBound(key, root_, nullptr);
@@ -484,9 +524,9 @@ public:
             return End();
         }
         if (Equivalent(node->GetKey(), key)) {
-            return ConstIterator(node->GetNext());
+            return ConstIterator{node->GetNext()};
         }
-        return ConstIterator(node);
+        return ConstIterator{node};
     }
     std::pair<Iterator, Iterator> EqualRange(const K& key) {
         auto node = FindLowerBound(key, root_, nullptr);
@@ -494,9 +534,9 @@ public:
             return {End(), End()};
         }
         if (Equivalent(node->GetKey(), key)) {
-            return {Iterator(node), Iterator(node->GetNext())};
+            return {Iterator{node}, Iterator{node->GetNext()}};
         }
-        return {Iterator(node), Iterator(node)};
+        return {Iterator{node}, Iterator{node}};
     }
     std::pair<ConstIterator, ConstIterator> EqualRange(const K& key) const {
         auto node = FindLowerBound(key, root_, nullptr);
@@ -504,9 +544,9 @@ public:
             return {End(), End()};
         }
         if (Equivalent(node->GetKey(), key)) {
-            return {ConstIterator(node), ConstIterator(node->GetNext())};
+            return {ConstIterator{node}, ConstIterator{node->GetNext()}};
         }
-        return {ConstIterator(node), ConstIterator(node)};
+        return {ConstIterator{node}, ConstIterator{node}};
     }
     bool Contains(const K& key) const {
         return FindNode(key) != nullptr;
@@ -515,40 +555,40 @@ public:
         return static_cast<size_t>(Contains(key));
     }
     Iterator Begin() noexcept {
-        return Iterator(rend_node_.GetNext());
+        return Iterator{rend_node_.GetNext()};
     }
     ConstIterator Begin() const noexcept {
-        return ConstIterator(rend_node_.GetNext());
+        return ConstIterator{rend_node_.GetNext()};
     }
     Iterator End() noexcept {
-        return Iterator(std::addressof(end_node_));
+        return Iterator{std::addressof(end_node_)};
     }
     ConstIterator End() const noexcept {
-        return ConstIterator(std::addressof(end_node_));
+        return ConstIterator{std::addressof(end_node_)};
     }
     ConstIterator CBegin() const noexcept {
-        return ConstIterator(rend_node_.GetNext());
+        return ConstIterator{rend_node_.GetNext()};
     }
     ConstIterator CEnd() const noexcept {
-        return ConstIterator(std::addressof(end_node_));
+        return ConstIterator{std::addressof(end_node_)};
     }
     ReverseIterator RBegin() noexcept {
-        return ReverseIterator(end_node_.GetPrev());
+        return ReverseIterator{end_node_.GetPrev()};
     }
     ConstReverseIterator RBegin() const noexcept {
-        return ConstReverseIterator(end_node_.GetPrev());
+        return ConstReverseIterator{end_node_.GetPrev()};
     }
     ReverseIterator REnd() noexcept {
-        return ReverseIterator(std::addressof(rend_node_));
+        return ReverseIterator{std::addressof(rend_node_)};
     }
     ConstReverseIterator REnd() const noexcept {
-        return ConstReverseIterator(std::addressof(rend_node_));
+        return ConstReverseIterator{std::addressof(rend_node_)};
     }
     ConstReverseIterator CRBegin() const noexcept {
-        return ConstReverseIterator(end_node_.GetPrev());
+        return ConstReverseIterator{end_node_.GetPrev()};
     }
     ConstReverseIterator CREnd() const noexcept {
-        return ConstReverseIterator(std::addressof(rend_node_));
+        return ConstReverseIterator{std::addressof(rend_node_)};
     }
 
     size_t Size() const {
@@ -567,7 +607,7 @@ private:
             return nullptr;
         }
         if (Equivalent(key, node->GetKey())) {
-            return node;
+            return node.get();
         }
         if (key < node->GetKey()) {
             return FindNode(key, node->GetLeft());
@@ -581,7 +621,7 @@ private:
             return best_bound;
         }
         if (Equivalent(key, node->GetKey())) {
-            return node;
+            return node.get();
         }
         if (key < node->GetKey()) {
             return FindLowerBound(key, node->GetLeft(), node.get());
@@ -645,6 +685,13 @@ private:
         prev->GetNext() = node;
     }
 
+    void IncreaseSizeInBranch(Node<K, V>* node) {
+        while (node != nullptr) {
+            ++(node->GetSize());
+            node = node->GetParent();
+        }
+    }
+
     std::pair<Iterator, bool> InsertNode(const std::unique_ptr<Node<K, V>>& node,
                                          const ValueType& key_value, Node<K, V>* parent, bool left,
                                          BaseNode<K, V>* current_prev,
@@ -663,8 +710,9 @@ private:
             parent->GetLeft()->GetParent() = parent;
 
             ConnectPrevNext(parent->GetLeft().get(), current_prev, current_next);
+            IncreaseSizeInBranch(parent);
 
-            return {Iterator(parent->GetLeft().get(), true)};
+            return {Iterator(parent->GetLeft().get()), true};
         }
 
         if ((node == nullptr) && (parent != nullptr) && !left) {
@@ -673,8 +721,9 @@ private:
             parent->GetRight()->GetParent() = parent;
 
             ConnectPrevNext(parent->GetRight().get(), current_prev, current_next);
+            IncreaseSizeInBranch(parent);
 
-            return {Iterator(parent->GetRight().get(), true)};
+            return {Iterator(parent->GetRight().get()), true};
         }
 
         if ((node != nullptr) && Equivalent(node->GetKey(), key_value.first)) {
@@ -682,11 +731,11 @@ private:
         }
 
         if ((node != nullptr) && (key_value.first < node->GetKey())) {
-            return InsertNode(node.GetLeft(), key_value, node.get(), true, current_prev,
+            return InsertNode(node->GetLeft(), key_value, node.get(), true, current_prev,
                               node.get());
         }
 
-        return InsertNode(node.GetRight(), key_value, node.get(), false, node.get(), current_next);
+        return InsertNode(node->GetRight(), key_value, node.get(), false, node.get(), current_next);
     }
 
     std::unique_ptr<Node<K, V>> root_;
