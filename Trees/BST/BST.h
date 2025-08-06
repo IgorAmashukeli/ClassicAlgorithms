@@ -439,7 +439,7 @@ public:
     BST() = default;
     BST(const BST& other) {
         auto node = std::addressof(rend_node_);
-        root_ = Copy(other, node);
+        root_ = Copy(other.root_, node);
         ConnectEndNodesAfterCopy(node);
     }
     BST& operator=(const BST& other) {
@@ -549,7 +549,7 @@ public:
         return {ConstIterator{node}, ConstIterator{node}};
     }
     bool Contains(const K& key) const {
-        return FindNode(key) != nullptr;
+        return FindNode(key, root_) != nullptr;
     }
     size_t Count(const K& key) const {
         return static_cast<size_t>(Contains(key));
@@ -570,6 +570,7 @@ public:
         return ConstIterator{rend_node_.GetNext()};
     }
     ConstIterator CEnd() const noexcept {
+        const BaseNode<K, V>* it = static_cast<BaseNode<K, V>*>(std::addressof(rend_node_));
         return ConstIterator{std::addressof(end_node_)};
     }
     ReverseIterator RBegin() noexcept {
