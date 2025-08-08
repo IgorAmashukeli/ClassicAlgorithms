@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <limits>
 #include <memory>
+#include <stack>
 #include <stdexcept>
 #include <utility>
 #include <iostream>
@@ -672,6 +673,31 @@ private:
         if (root_ != nullptr) {
             max_node->GetNext() = std::addressof(end_node_);
             end_node_.GetPrev() = max_node;
+        }
+    }
+
+    // not finished yet
+    void Copy(const BST& other) {
+        if (other.Empty()) {
+            return;
+        }
+        Node<K, V>* other_node = other.root_.get();
+        BaseNode<K, V>* prev_node = std::addressof(rend_node_);
+
+        while (true) {
+
+            while (other_node->GetLeft() != nullptr) {
+                other_node = other_node->GetLeft();
+            }
+
+            std::unique_ptr<Node<K, V>> node =
+                std::make_unique<Node<K, V>>(other_node->GetKey(), other_node->GetValue(), nullptr,
+                                             nullptr, other_node->GetSize());
+
+            while (other_node->GetRight() == nullptr && other_node->GetParent() != nullptr) {
+                other_node = other_node->GetParent();
+            }
+            other_node = other_node->GetRight();
         }
     }
 
