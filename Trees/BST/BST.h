@@ -1,8 +1,11 @@
 #pragma once
 
+#include <cstddef>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <utility>
+#include <iostream>
 
 template <typename K>
 bool Equivalent(const K& key_1, const K& key_2) {
@@ -14,12 +17,12 @@ struct Node;
 
 template <typename K, typename V>
 struct BaseNode {
-    BaseNode() = default;
+    BaseNode() noexcept = default;
     BaseNode(const BaseNode& other) = delete;
     BaseNode& operator=(const BaseNode& other) = delete;
     BaseNode(BaseNode&& other) = delete;
     BaseNode& operator=(BaseNode&& other) = delete;
-    ~BaseNode() = default;
+    ~BaseNode() noexcept = default;
 
     virtual const K& GetKey() const = 0;
     virtual const V& GetValue() const = 0;
@@ -30,15 +33,15 @@ struct BaseNode {
     virtual std::unique_ptr<Node<K, V>>& GetRight() = 0;
     virtual Node<K, V>* GetParent() const = 0;
     virtual Node<K, V>*& GetParent() = 0;
-    virtual BaseNode<K, V>* GetPrev() const = 0;
-    virtual BaseNode<K, V>*& GetPrev() = 0;
-    virtual BaseNode<K, V>* GetNext() const = 0;
-    virtual BaseNode<K, V>*& GetNext() = 0;
+    virtual BaseNode<K, V>* GetPrev() const noexcept = 0;
+    virtual BaseNode<K, V>*& GetPrev() noexcept = 0;
+    virtual BaseNode<K, V>* GetNext() const noexcept = 0;
+    virtual BaseNode<K, V>*& GetNext() noexcept = 0;
     virtual size_t GetSize() const = 0;
     virtual size_t& GetSize() = 0;
     virtual const std::pair<const K, V>& GetKeyValue() const = 0;
     virtual std::pair<const K, V>& GetKeyValue() = 0;
-    virtual bool IsEndNode() const = 0;
+    virtual bool IsEndNode() const noexcept = 0;
 };
 
 template <typename K, typename V>
@@ -61,58 +64,58 @@ struct Node : public BaseNode<K, V> {
     Node(const K& key, const V& value, BaseNode<K, V>* prev, BaseNode<K, V>* next, size_t size)
         : key_value_(key, value), prev_(prev), next_(next), size_(size) {
     }
-    const K& GetKey() const {
+    const K& GetKey() const noexcept {
         return key_value_.first;
     }
-    const V& GetValue() const {
+    const V& GetValue() const noexcept {
         return key_value_.second;
     }
-    V& GetValue() {
+    V& GetValue() noexcept {
         return key_value_.second;
     }
-    const std::unique_ptr<Node<K, V>>& GetLeft() const {
+    const std::unique_ptr<Node<K, V>>& GetLeft() const noexcept {
         return left_;
     }
-    std::unique_ptr<Node<K, V>>& GetLeft() {
+    std::unique_ptr<Node<K, V>>& GetLeft() noexcept {
         return left_;
     }
-    const std::unique_ptr<Node<K, V>>& GetRight() const {
+    const std::unique_ptr<Node<K, V>>& GetRight() const noexcept {
         return right_;
     }
-    std::unique_ptr<Node<K, V>>& GetRight() {
+    std::unique_ptr<Node<K, V>>& GetRight() noexcept {
         return right_;
     }
-    Node<K, V>* GetParent() const {
+    Node<K, V>* GetParent() const noexcept {
         return parent_;
     }
-    Node<K, V>*& GetParent() {
+    Node<K, V>*& GetParent() noexcept {
         return parent_;
     }
-    BaseNode<K, V>* GetPrev() const {
+    BaseNode<K, V>* GetPrev() const noexcept {
         return prev_;
     }
-    BaseNode<K, V>*& GetPrev() {
+    BaseNode<K, V>*& GetPrev() noexcept {
         return prev_;
     }
-    BaseNode<K, V>* GetNext() const {
+    BaseNode<K, V>* GetNext() const noexcept {
         return next_;
     }
-    BaseNode<K, V>*& GetNext() {
+    BaseNode<K, V>*& GetNext() noexcept {
         return next_;
     }
-    size_t GetSize() const {
+    size_t GetSize() const noexcept {
         return size_;
     }
-    size_t& GetSize() {
+    size_t& GetSize() noexcept {
         return size_;
     }
-    const std::pair<const K, V>& GetKeyValue() const {
+    const std::pair<const K, V>& GetKeyValue() const noexcept {
         return key_value_;
     }
-    std::pair<const K, V>& GetKeyValue() {
+    std::pair<const K, V>& GetKeyValue() noexcept {
         return key_value_;
     }
-    bool IsEndNode() const {
+    bool IsEndNode() const noexcept {
         return false;
     }
 };
@@ -122,14 +125,14 @@ struct EndNode : public BaseNode<K, V> {
     BaseNode<K, V>* prev_ = nullptr;
     BaseNode<K, V>* next_ = nullptr;
 
-    EndNode() = default;
+    EndNode() noexcept = default;
     EndNode(const EndNode& other) = delete;
     EndNode& operator=(const EndNode& other) = delete;
-    EndNode(EndNode&& other) = default;
-    EndNode& operator=(EndNode&& other) = default;
-    ~EndNode() = default;
+    EndNode(EndNode&& other) noexcept = default;
+    EndNode& operator=(EndNode&& other) noexcept = default;
+    ~EndNode() noexcept = default;
 
-    EndNode(BaseNode<K, V>* prev, BaseNode<K, V>* next) : prev_(prev), next_(next) {
+    EndNode(BaseNode<K, V>* prev, BaseNode<K, V>* next) noexcept : prev_(prev), next_(next) {
     }
     const K& GetKey() const {
         throw std::out_of_range("Out of range!");
@@ -158,16 +161,16 @@ struct EndNode : public BaseNode<K, V> {
     Node<K, V>*& GetParent() {
         throw std::out_of_range("Out of range!");
     }
-    BaseNode<K, V>* GetPrev() const {
+    BaseNode<K, V>* GetPrev() const noexcept {
         return prev_;
     }
-    BaseNode<K, V>*& GetPrev() {
+    BaseNode<K, V>*& GetPrev() noexcept {
         return prev_;
     }
-    BaseNode<K, V>* GetNext() const {
+    BaseNode<K, V>* GetNext() const noexcept {
         return next_;
     }
-    BaseNode<K, V>*& GetNext() {
+    BaseNode<K, V>*& GetNext() noexcept {
         return next_;
     }
     size_t GetSize() const {
@@ -182,7 +185,7 @@ struct EndNode : public BaseNode<K, V> {
     std::pair<const K, V>& GetKeyValue() {
         throw std::out_of_range("Out of range!");
     }
-    bool IsEndNode() const {
+    bool IsEndNode() const noexcept {
         return true;
     }
 };
@@ -198,14 +201,14 @@ public:
 
     class Iterator {
     public:
-        Iterator() = default;
-        Iterator(const Iterator& other) = default;
-        Iterator& operator=(const Iterator& other) = default;
-        Iterator(Iterator&& other) = default;
-        Iterator& operator=(Iterator&& other) = default;
-        ~Iterator() = default;
+        Iterator() noexcept = default;
+        Iterator(const Iterator& other) noexcept = default;
+        Iterator& operator=(const Iterator& other) noexcept = default;
+        Iterator(Iterator&& other) noexcept = default;
+        Iterator& operator=(Iterator&& other) noexcept = default;
+        ~Iterator() noexcept = default;
 
-        explicit Iterator(BaseNode<K, V>* node) : node_(node) {
+        explicit Iterator(BaseNode<K, V>* node) noexcept : node_(node) {
         }
         Reference operator*() const {
             return node_->GetKeyValue();
@@ -231,10 +234,10 @@ public:
             Dec();
             return tmp;
         }
-        bool operator==(const Iterator& other) const {
+        bool operator==(const Iterator& other) const noexcept {
             return node_ == other.node_;
         }
-        bool operator!=(const Iterator& other) const {
+        bool operator!=(const Iterator& other) const noexcept {
             return node_ != other.node_;
         }
 
@@ -258,16 +261,16 @@ public:
 
     class ConstIterator {
     public:
-        ConstIterator() = default;
-        ConstIterator(const ConstIterator& other) = default;
-        ConstIterator& operator=(const ConstIterator& other) = default;
-        ConstIterator(ConstIterator&& other) = default;
-        ConstIterator& operator=(ConstIterator&& other) = default;
-        ~ConstIterator() = default;
+        ConstIterator() noexcept = default;
+        ConstIterator(const ConstIterator& other) noexcept = default;
+        ConstIterator& operator=(const ConstIterator& other) noexcept = default;
+        ConstIterator(ConstIterator&& other) noexcept = default;
+        ConstIterator& operator=(ConstIterator&& other) noexcept = default;
+        ~ConstIterator() noexcept = default;
 
-        explicit ConstIterator(const BaseNode<K, V>* node) : node_(node) {
+        explicit ConstIterator(const BaseNode<K, V>* node) noexcept : node_(node) {
         }
-        ConstIterator(Iterator it) : node_(it.node_) {
+        ConstIterator(Iterator it) noexcept : node_(it.node_) {
         }
         ConstReference operator*() const {
             return node_->GetKeyValue();
@@ -293,10 +296,10 @@ public:
             Dec();
             return tmp;
         }
-        bool operator==(const ConstIterator& other) const {
+        bool operator==(const ConstIterator& other) const noexcept {
             return node_ == other.node_;
         }
-        bool operator!=(const ConstIterator& other) const {
+        bool operator!=(const ConstIterator& other) const noexcept {
             return node_ != other.node_;
         }
 
@@ -318,12 +321,12 @@ public:
 
     class ReverseIterator {
     public:
-        ReverseIterator() = default;
-        ReverseIterator(const ReverseIterator& other) = default;
-        ReverseIterator& operator=(const ReverseIterator& other) = default;
-        ReverseIterator(ReverseIterator&& other) = default;
-        ReverseIterator& operator=(ReverseIterator&& other) = default;
-        ~ReverseIterator() = default;
+        ReverseIterator() noexcept = default;
+        ReverseIterator(const ReverseIterator& other) noexcept = default;
+        ReverseIterator& operator=(const ReverseIterator& other) noexcept = default;
+        ReverseIterator(ReverseIterator&& other) noexcept = default;
+        ReverseIterator& operator=(ReverseIterator&& other) noexcept = default;
+        ~ReverseIterator() noexcept = default;
 
         explicit ReverseIterator(BaseNode<K, V>* node) : node_(node) {
         }
@@ -351,10 +354,10 @@ public:
             Dec();
             return tmp;
         }
-        bool operator==(const ReverseIterator& other) const {
+        bool operator==(const ReverseIterator& other) const noexcept {
             return node_ == other.node_;
         }
-        bool operator!=(const ReverseIterator& other) const {
+        bool operator!=(const ReverseIterator& other) const noexcept {
             return node_ != other.node_;
         }
 
@@ -378,21 +381,21 @@ public:
 
     class ConstReverseIterator {
     public:
-        ConstReverseIterator() = default;
-        ConstReverseIterator(const ConstReverseIterator& other) = default;
-        ConstReverseIterator& operator=(const ConstReverseIterator& other) = default;
-        ConstReverseIterator(ConstReverseIterator&& other) = default;
-        ConstReverseIterator& operator=(ConstReverseIterator&& other) = default;
-        ~ConstReverseIterator() = default;
+        ConstReverseIterator() noexcept = default;
+        ConstReverseIterator(const ConstReverseIterator& other) noexcept = default;
+        ConstReverseIterator& operator=(const ConstReverseIterator& other) noexcept = default;
+        ConstReverseIterator(ConstReverseIterator&& other) noexcept = default;
+        ConstReverseIterator& operator=(ConstReverseIterator&& other) noexcept = default;
+        ~ConstReverseIterator() noexcept = default;
 
-        explicit ConstReverseIterator(BaseNode<K, V>* node) : node_(node) {
+        explicit ConstReverseIterator(const BaseNode<K, V>* node) noexcept : node_(node) {
         }
-        ConstReverseIterator(ReverseIterator it) : node_(it.node_) {
+        ConstReverseIterator(ReverseIterator it) noexcept : node_(it.node_) {
         }
-        ConstReference operator*() const {
+        ConstReference operator*() const noexcept {
             return node_->GetKeyValue();
         }
-        ConstPointer operator->() const {
+        ConstPointer operator->() const noexcept {
             return std::addressof(node_->GetKeyValue());
         }
         ConstReverseIterator& operator++() {
@@ -413,10 +416,10 @@ public:
             Dec();
             return tmp;
         }
-        bool operator==(const ConstReverseIterator& other) const {
+        bool operator==(const ConstReverseIterator& other) const noexcept {
             return node_ == other.node_;
         }
-        bool operator!=(const ConstReverseIterator& other) const {
+        bool operator!=(const ConstReverseIterator& other) const noexcept {
             return node_ != other.node_;
         }
 
@@ -438,14 +441,14 @@ public:
 
     BST() = default;
     BST(const BST& other) {
-        auto node = std::addressof(rend_node_);
+        BaseNode<K, V>* node = std::addressof(rend_node_);
         root_ = Copy(other.root_, node);
         ConnectEndNodesAfterCopy(node);
     }
     BST& operator=(const BST& other) {
         if (this != std::addressof(other)) {
             Clear();
-            auto node = std::addressof(rend_node_);
+            BaseNode<K, V>* node = std::addressof(rend_node_);
             root_ = Copy(other.root_, node);
             ConnectEndNodesAfterCopy(node);
         }
@@ -463,53 +466,67 @@ public:
     }
     ~BST() = default;
 
-    void Clear() {
+    void Clear() noexcept {
         root_ = nullptr;
         rend_node_.GetPrev() = nullptr;
         rend_node_.GetNext() = std::addressof(end_node_);
         end_node_.GetNext() = nullptr;
         end_node_.GetPrev() = std::addressof(rend_node_);
     }
-    void Swap(const BST<K, V>& other) {
+    void Swap(BST<K, V>& other) {
         std::swap(root_, other.root_);
         ConnectEndNodesAfterSwap(other);
     }
     std::pair<Iterator, bool> Insert(const ValueType& key_value) {
-
-        return InsertNode(root_, key_value, nullptr, false, std::addressof(rend_node_),
-                          std::addressof(end_node_));
+        return InsertNode(key_value);
+    }
+    std::pair<Iterator, bool> Insert(ValueType&& key_value) {
+        return InsertNode(std::move(key_value));
+    }
+    template <typename P>
+    std::pair<Iterator, bool> Insert(P&& key_value) {
+        return InsertNode(std::forward<P>(key_value));
+    }
+    template <typename InputIt>
+    void Insert(InputIt first, InputIt last) {
+        for (auto it = first; it != last; ++it) {
+            Insert(*it);
+        }
+    }
+    void Insert(std::initializer_list<ValueType> ilist) {
+        Insert(ilist.begin(), ilist.end());
     }
 
     Iterator Find(const K& key) {
-        auto node = FindNode(key, root_);
+        auto node = FindNode(key);
         if (node == nullptr) {
             return End();
         }
         return Iterator{node};
     }
     ConstIterator Find(const K& key) const {
-        auto node = FindNode(key, root_);
+        auto node = FindNode(key);
         if (node == nullptr) {
             return End();
         }
         return ConstIterator{node};
     }
     Iterator LowerBound(const K& key) {
-        auto node = FindLowerBound(key, root_, nullptr);
+        auto node = FindLowerBound(key);
         if (node == nullptr) {
             return End();
         }
         return Iterator{node};
     }
     ConstIterator LowerBound(const K& key) const {
-        auto node = FindLowerBound(key, root_, nullptr);
+        auto node = FindLowerBound(key);
         if (node == nullptr) {
             return End();
         }
         return ConstIterator{node};
     }
     Iterator UpperBound(const K& key) {
-        auto node = FindLowerBound(key, root_, nullptr);
+        auto node = FindLowerBound(key);
         if (node == nullptr) {
             return End();
         }
@@ -519,7 +536,7 @@ public:
         return Iterator{node};
     }
     ConstIterator UpperBound(const K& key) const {
-        auto node = FindLowerBound(key, root_, nullptr);
+        auto node = FindLowerBound(key);
         if (node == nullptr) {
             return End();
         }
@@ -529,7 +546,7 @@ public:
         return ConstIterator{node};
     }
     std::pair<Iterator, Iterator> EqualRange(const K& key) {
-        auto node = FindLowerBound(key, root_, nullptr);
+        auto node = FindLowerBound(key);
         if (node == nullptr) {
             return {End(), End()};
         }
@@ -539,7 +556,7 @@ public:
         return {Iterator{node}, Iterator{node}};
     }
     std::pair<ConstIterator, ConstIterator> EqualRange(const K& key) const {
-        auto node = FindLowerBound(key, root_, nullptr);
+        auto node = FindLowerBound(key);
         if (node == nullptr) {
             return {End(), End()};
         }
@@ -549,7 +566,7 @@ public:
         return {ConstIterator{node}, ConstIterator{node}};
     }
     bool Contains(const K& key) const {
-        return FindNode(key, root_) != nullptr;
+        return FindNode(key) != nullptr;
     }
     size_t Count(const K& key) const {
         return static_cast<size_t>(Contains(key));
@@ -570,7 +587,6 @@ public:
         return ConstIterator{rend_node_.GetNext()};
     }
     ConstIterator CEnd() const noexcept {
-        const BaseNode<K, V>* it = static_cast<BaseNode<K, V>*>(std::addressof(rend_node_));
         return ConstIterator{std::addressof(end_node_)};
     }
     ReverseIterator RBegin() noexcept {
@@ -592,45 +608,55 @@ public:
         return ConstReverseIterator{std::addressof(rend_node_)};
     }
 
-    size_t Size() const {
+    size_t Size() const noexcept {
         if (root_ == nullptr) {
             return 0;
         }
         return root_->GetSize();
     }
-    bool Empty() const {
+    size_t MaxSize() const noexcept {
+        return (std::numeric_limits<std::ptrdiff_t>::max() / sizeof(Node<K, V>));
+    }
+    bool Empty() const noexcept {
         return (root_ == nullptr);
     }
 
 private:
-    Node<K, V>* FindNode(const K& key, const std::unique_ptr<Node<K, V>>& node) const {
-        if (node == nullptr) {
-            return nullptr;
+    Node<K, V>* FindNode(const K& key) const {
+        Node<K, V>* node = root_.get();
+
+        while (node != nullptr) {
+            if (Equivalent(key, node->GetKey())) {
+                return node;
+            }
+            if (key < node->GetKey()) {
+                node = node->GetLeft().get();
+            } else {
+                node = node->GetRight().get();
+            }
         }
-        if (Equivalent(key, node->GetKey())) {
-            return node.get();
-        }
-        if (key < node->GetKey()) {
-            return FindNode(key, node->GetLeft());
-        }
-        return FindNode(key, node->GetRight());
+        return nullptr;
     }
 
-    Node<K, V>* FindLowerBound(const K& key, const std::unique_ptr<Node<K, V>>& node,
-                               Node<K, V>* best_bound) const {
-        if (node == nullptr) {
-            return best_bound;
+    Node<K, V>* FindLowerBound(const K& key) const {
+        Node<K, V>* node = root_.get();
+        Node<K, V>* best_bound = nullptr;
+
+        while (node != nullptr) {
+            if (Equivalent(key, node->GetKey())) {
+                return node;
+            }
+            if (key < node->GetKey()) {
+                best_bound = node;
+                node = node->GetLeft().get();
+            } else {
+                node = node->GetRight().get();
+            }
         }
-        if (Equivalent(key, node->GetKey())) {
-            return node.get();
-        }
-        if (key < node->GetKey()) {
-            return FindLowerBound(key, node->GetLeft(), node.get());
-        }
-        return FindLowerBound(key, node->GetRight(), best_bound);
+        return best_bound;
     }
 
-    void ConnectEndNodesAfterSwap(const BST<K, V>& other) {
+    void ConnectEndNodesAfterSwap(BST<K, V>& other) {
         if (root_ != nullptr) {
             std::swap(rend_node_.GetNext(), other.rend_node_.GetNext());
             rend_node_.GetNext()->GetPrev() = std::addressof(rend_node_);
@@ -645,7 +671,7 @@ private:
     void ConnectEndNodesAfterCopy(BaseNode<K, V>* max_node) {
         if (root_ != nullptr) {
             max_node->GetNext() = std::addressof(end_node_);
-            end_node_->GetPrev() = std::addressof(max_node);
+            end_node_.GetPrev() = max_node;
         }
     }
 
@@ -693,50 +719,147 @@ private:
         }
     }
 
-    std::pair<Iterator, bool> InsertNode(const std::unique_ptr<Node<K, V>>& node,
-                                         const ValueType& key_value, Node<K, V>* parent, bool left,
-                                         BaseNode<K, V>* current_prev,
-                                         BaseNode<K, V>* current_next) {
-        if ((node == nullptr) && (parent == nullptr)) {
-            root_ = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
-                                                 std::addressof(rend_node_),
-                                                 std::addressof(end_node_), 1);
-            ConnectPrevNext(root_.get(), current_prev, current_next);
-            return {Iterator(root_.get()), true};
+    std::pair<Iterator, bool> InsertNode(const ValueType& key_value) {
+        Node<K, V>* node = root_.get();
+        Node<K, V>* parent = nullptr;
+        bool left = false;
+        BaseNode<K, V>* current_prev = std::addressof(rend_node_);
+        BaseNode<K, V>* current_next = std::addressof(end_node_);
+
+        while (true) {
+            if ((node == nullptr) && (parent == nullptr)) {
+                root_ = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
+                                                     std::addressof(rend_node_),
+                                                     std::addressof(end_node_), 1);
+                ConnectPrevNext(root_.get(), current_prev, current_next);
+                return {Iterator(node), true};
+            }
+            if ((node == nullptr) && (parent != nullptr) && left) {
+                parent->GetLeft() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
+                                                                 nullptr, nullptr, 1);
+                parent->GetLeft()->GetParent() = parent;
+                ConnectPrevNext(parent->GetLeft().get(), current_prev, current_next);
+                IncreaseSizeInBranch(parent);
+                return {Iterator(parent->GetLeft().get()), true};
+            }
+            if ((node == nullptr) && (parent != nullptr) && !left) {
+                parent->GetRight() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
+                                                                  nullptr, nullptr, 1);
+                parent->GetRight()->GetParent() = parent;
+                ConnectPrevNext(parent->GetRight().get(), current_prev, current_next);
+                IncreaseSizeInBranch(parent);
+                return {Iterator(parent->GetRight().get()), true};
+            }
+            if ((node != nullptr) && Equivalent(node->GetKey(), key_value.first)) {
+                return {Iterator(node), false};
+            }
+            if ((node != nullptr) && (key_value.first < node->GetKey())) {
+                left = true;
+                parent = node;
+                current_next = node;
+                node = node->GetLeft().get();
+            } else {
+                left = false;
+                parent = node;
+                current_prev = node;
+                node = node->GetRight().get();
+            }
         }
+    }
+    std::pair<Iterator, bool> InsertNode(ValueType&& key_value) {
+        Node<K, V>* node = root_.get();
+        Node<K, V>* parent = nullptr;
+        bool left = false;
+        BaseNode<K, V>* current_prev = std::addressof(rend_node_);
+        BaseNode<K, V>* current_next = std::addressof(end_node_);
 
-        if ((node == nullptr) && (parent != nullptr) && left) {
-            parent->GetLeft() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
-                                                             nullptr, nullptr, 1);
-            parent->GetLeft()->GetParent() = parent;
-
-            ConnectPrevNext(parent->GetLeft().get(), current_prev, current_next);
-            IncreaseSizeInBranch(parent);
-
-            return {Iterator(parent->GetLeft().get()), true};
+        while (true) {
+            if ((node == nullptr) && (parent == nullptr)) {
+                root_ = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
+                                                     std::addressof(rend_node_),
+                                                     std::addressof(end_node_), 1);
+                ConnectPrevNext(root_.get(), current_prev, current_next);
+                return {Iterator(node), true};
+            }
+            if ((node == nullptr) && (parent != nullptr) && left) {
+                parent->GetLeft() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
+                                                                 nullptr, nullptr, 1);
+                parent->GetLeft()->GetParent() = parent;
+                ConnectPrevNext(parent->GetLeft().get(), current_prev, current_next);
+                IncreaseSizeInBranch(parent);
+                return {Iterator(parent->GetLeft().get()), true};
+            }
+            if ((node == nullptr) && (parent != nullptr) && !left) {
+                parent->GetRight() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
+                                                                  nullptr, nullptr, 1);
+                parent->GetRight()->GetParent() = parent;
+                ConnectPrevNext(parent->GetRight().get(), current_prev, current_next);
+                IncreaseSizeInBranch(parent);
+                return {Iterator(parent->GetRight().get()), true};
+            }
+            if ((node != nullptr) && Equivalent(node->GetKey(), key_value.first)) {
+                return {Iterator(node), false};
+            }
+            if ((node != nullptr) && (key_value.first < node->GetKey())) {
+                left = true;
+                parent = node;
+                current_next = node;
+                node = node->GetLeft().get();
+            } else {
+                left = false;
+                parent = node;
+                current_prev = node;
+                node = node->GetRight().get();
+            }
         }
+    }
+    template <typename P>
+    std::pair<Iterator, bool> InsertNode(P&& key_value) {
+        Node<K, V>* node = root_.get();
+        Node<K, V>* parent = nullptr;
+        bool left = false;
+        BaseNode<K, V>* current_prev = std::addressof(rend_node_);
+        BaseNode<K, V>* current_next = std::addressof(end_node_);
 
-        if ((node == nullptr) && (parent != nullptr) && !left) {
-            parent->GetRight() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
-                                                              nullptr, nullptr, 1);
-            parent->GetRight()->GetParent() = parent;
-
-            ConnectPrevNext(parent->GetRight().get(), current_prev, current_next);
-            IncreaseSizeInBranch(parent);
-
-            return {Iterator(parent->GetRight().get()), true};
+        while (true) {
+            if ((node == nullptr) && (parent == nullptr)) {
+                root_ = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
+                                                     std::addressof(rend_node_),
+                                                     std::addressof(end_node_), 1);
+                ConnectPrevNext(root_.get(), current_prev, current_next);
+                return {Iterator(node), true};
+            }
+            if ((node == nullptr) && (parent != nullptr) && left) {
+                parent->GetLeft() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
+                                                                 nullptr, nullptr, 1);
+                parent->GetLeft()->GetParent() = parent;
+                ConnectPrevNext(parent->GetLeft().get(), current_prev, current_next);
+                IncreaseSizeInBranch(parent);
+                return {Iterator(parent->GetLeft().get()), true};
+            }
+            if ((node == nullptr) && (parent != nullptr) && !left) {
+                parent->GetRight() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
+                                                                  nullptr, nullptr, 1);
+                parent->GetRight()->GetParent() = parent;
+                ConnectPrevNext(parent->GetRight().get(), current_prev, current_next);
+                IncreaseSizeInBranch(parent);
+                return {Iterator(parent->GetRight().get()), true};
+            }
+            if ((node != nullptr) && Equivalent(node->GetKey(), key_value.first)) {
+                return {Iterator(node), false};
+            }
+            if ((node != nullptr) && (key_value.first < node->GetKey())) {
+                left = true;
+                parent = node;
+                current_next = node;
+                node = node->GetLeft().get();
+            } else {
+                left = false;
+                parent = node;
+                current_prev = node;
+                node = node->GetRight().get();
+            }
         }
-
-        if ((node != nullptr) && Equivalent(node->GetKey(), key_value.first)) {
-            return {Iterator(node.get()), false};
-        }
-
-        if ((node != nullptr) && (key_value.first < node->GetKey())) {
-            return InsertNode(node->GetLeft(), key_value, node.get(), true, current_prev,
-                              node.get());
-        }
-
-        return InsertNode(node->GetRight(), key_value, node.get(), false, node.get(), current_next);
     }
 
     std::unique_ptr<Node<K, V>> root_;
@@ -756,6 +879,11 @@ bool operator==(const BST<K, V>& lhs, const BST<K, V>& rhs) {
         }
     }
     return true;
+}
+
+template <typename K, typename V>
+void Swap(const BST<K, V>& lhs, const BST<K, V>& rhs) {
+    lhs.Swap(rhs);
 }
 
 template <typename K, typename V>

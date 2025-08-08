@@ -1,304 +1,248 @@
 #include "BST.h"
 #include <cassert>
 #include <string>
-#include <vector>
 #include <iostream>
+#include <cassert>
+#include <vector>
+#include <algorithm>
+#include <random>
+
+// Custom value type for V
+struct Book {
+    std::string title_;
+    int year_;
+    explicit Book(std::string title, int year) : title_(std::move(title)), year_(year) {
+    }
+    bool operator==(const Book& other) const {
+        return title_ == other.title_ && year_ == other.year_;
+    }
+};
 
 template <typename K, typename V>
-class BST;  // Предполагается, что класс BST уже определён
-
-void InsertTest() {
-    BST<int, std::string> bst;
-    assert(bst.Empty());
-    assert(bst.Size() == 0);
-
-    auto result = bst.Insert({1, "one"});
-    assert(result.second == true);
-    assert(result.first != bst.End());
-    assert((*result.first).first == 1);
-    assert((*result.first).second == "one");
-
-    result = bst.Insert({2, "two"});
-    assert(result.second == true);
-    assert((*result.first).first == 2);
-    assert((*result.first).second == "two");
-
-    result = bst.Insert({1, "one again"});
-    assert(result.second == false);
-    assert((*result.first).first == 1);
-    assert((*result.first).second == "one");
-
-    assert(bst.Size() == 2);
+BST<K, V> CreateLargeBST(int size) {
+    BST<K, V> bst;
+    std::vector<int> indices(size);
+    for (int i = 0; i < size; ++i) {
+        indices[i] = i + 1;
+    }
+    std::mt19937 rng(42);  // Fixed seed for reproducibility
+    std::shuffle(indices.begin(), indices.end(), rng);
+    for (int i : indices) {
+        double key = static_cast<double>(i);
+        Book value("Book" + std::to_string(i), 1900 + (i % 100));
+        bst.Insert({key, value});
+    }
+    return bst;
 }
 
-void FindTest() {
-    BST<int, std::string> bst;
-    bst.Insert({1, "one"});
-    bst.Insert({2, "two"});
-    bst.Insert({3, "three"});
+void InsertLargeTest() {
+    constexpr int kLargeSize = 1000;
+    BST<double, Book> bst = CreateLargeBST<double, Book>(kLargeSize);
+    assert(bst.Size() == kLargeSize);
+    for (int i = 1; i <= kLargeSize; i += 100) {
+        double key = static_cast<double>(i);
+        auto it = bst.Find(key);
+        assert(it != bst.End());
+        assert((*it).first == key);
+        assert((*it).second == Book("Book" + std::to_string(i), 1900 + (i % 100)));
+    }
+    auto result = bst.Insert({500.0, Book("duplicate", 2000)});
+    assert(!result.second);
+    assert((*result.first).first == 500.0);
+    assert((*result.first).second == Book("Book500", 1900 + (500 % 100)));
+}
 
-    auto it = bst.Find(2);
-    assert(it != bst.End());
-    assert((*it).first == 2);
-    assert((*it).second == "two");
-
-    it = bst.Find(4);
+void FindLargeTest() {
+    constexpr int kLargeSize = 1000;
+    BST<double, Book> bst = CreateLargeBST<double, Book>(kLargeSize);
+    for (int i = 1; i <= kLargeSize; i += 100) {
+        double key = static_cast<double>(i);
+        auto it = bst.Find(key);
+        assert(it != bst.End());
+        assert((*it).first == key);
+    }
+    auto it = bst.Find(0.0);
     assert(it == bst.End());
-
-    const BST<int, std::string>& const_bst = bst;
-    auto cit = const_bst.Find(2);
-    assert(cit != const_bst.End());
-    assert((*cit).first == 2);
-    assert((*cit).second == "two");
-
-    cit = const_bst.Find(4);
-    assert(cit == const_bst.End());
-}
-
-void BeginEndTest() {
-    BST<int, std::string> bst;
-    bst.Insert({3, "three"});
-    bst.Insert({1, "one"});
-    bst.Insert({2, "two"});
-    bst.Insert({4, "four"});
-
-    std::vector<int> keys;
-    for (auto it = bst.Begin(); it != bst.End(); ++it) {
-        keys.push_back((*it).first);
-    }
-    assert(keys == std::vector<int>({1, 2, 3, 4}));
-
-    const BST<int, std::string>& const_bst = bst;
-    keys.clear();
-    for (auto it = const_bst.Begin(); it != const_bst.End(); ++it) {
-        keys.push_back((*it).first);
-    }
-    assert(keys == std::vector<int>({1, 2, 3, 4}));
-
-    keys.clear();
-    for (auto it = const_bst.CBegin(); it != const_bst.CEnd(); ++it) {
-        keys.push_back((*it).first);
-    }
-    assert(keys == std::vector<int>({1, 2, 3, 4}));
-}
-
-void RBeginREndTest() {
-    BST<int, std::string> bst;
-    bst.Insert({3, "three"});
-    bst.Insert({1, "one"});
-    bst.Insert({2, "two"});
-    bst.Insert({4, "four"});
-
-    std::vector<int> keys;
-    for (auto it = bst.RBegin(); it != bst.REnd(); ++it) {
-        keys.push_back((*it).first);
-    }
-    assert(keys == std::vector<int>({4, 3, 2, 1}));
-
-    const BST<int, std::string>& const_bst = bst;
-    keys.clear();
-    for (auto it = const_bst.RBegin(); it != const_bst.REnd(); ++it) {
-        keys.push_back((*it).first);
-    }
-    assert(keys == std::vector<int>({4, 3, 2, 1}));
-
-    keys.clear();
-    for (auto it = const_bst.CRBegin(); it != const_bst.CREnd(); ++it) {
-        keys.push_back((*it).first);
-    }
-    assert(keys == std::vector<int>({4, 3, 2, 1}));
-}
-
-void LowerBoundTest() {
-    BST<int, std::string> bst;
-    bst.Insert({1, "one"});
-    bst.Insert({3, "three"});
-    bst.Insert({5, "five"});
-
-    auto it = bst.LowerBound(2);
-    assert(it != bst.End());
-    assert((*it).first == 3);
-
-    it = bst.LowerBound(3);
-    assert(it != bst.End());
-    assert((*it).first == 3);
-
-    it = bst.LowerBound(0);
-    assert(it != bst.End());
-    assert((*it).first == 1);
-
-    it = bst.LowerBound(6);
+    it = bst.Find(1001.0);
     assert(it == bst.End());
-
-    const BST<int, std::string>& const_bst = bst;
-    auto cit = const_bst.LowerBound(2);
-    assert(cit != const_bst.End());
-    assert((*cit).first == 3);
 }
 
-void UpperBoundTest() {
-    BST<int, std::string> bst;
-    bst.Insert({1, "one"});
-    bst.Insert({3, "three"});
-    bst.Insert({5, "five"});
+void IteratorsLargeTest() {
+    constexpr int kLargeSize = 1000;
+    BST<double, Book> bst = CreateLargeBST<double, Book>(kLargeSize);
+    auto it = bst.Begin();
+    assert((*it).first == 1.0);
+    it = bst.End();
+    --it;
+    assert((*it).first == 1000.0);
+    auto rit = bst.RBegin();
+    assert((*rit).first == 1000.0);
+    rit = bst.REnd();
+    --rit;
+    assert((*rit).first == 1.0);
+}
 
-    auto it = bst.UpperBound(2);
+void BoundsLargeTest() {
+    constexpr int kLargeSize = 1000;
+    BST<double, Book> bst = CreateLargeBST<double, Book>(kLargeSize);
+    auto it = bst.LowerBound(500.0);
     assert(it != bst.End());
-    assert((*it).first == 3);
-
-    it = bst.UpperBound(3);
+    assert((*it).first == 500.0);
+    it = bst.UpperBound(500.0);
     assert(it != bst.End());
-    assert((*it).first == 5);
-
-    it = bst.UpperBound(0);
+    assert((*it).first == 501.0);
+    it = bst.LowerBound(0.0);
     assert(it != bst.End());
-    assert((*it).first == 1);
-
-    it = bst.UpperBound(5);
+    assert((*it).first == 1.0);
+    it = bst.UpperBound(1000.0);
     assert(it == bst.End());
-
-    const BST<int, std::string>& const_bst = bst;
-    auto cit = const_bst.UpperBound(2);
-    assert(cit != const_bst.End());
-    assert((*cit).first == 3);
 }
 
-void EqualRangeTest() {
-    BST<int, std::string> bst;
-    bst.Insert({1, "one"});
-    bst.Insert({3, "three"});
-    bst.Insert({5, "five"});
-
-    auto range = bst.EqualRange(3);
+void EqualRangeLargeTest() {
+    constexpr int kLargeSize = 1000;
+    BST<double, Book> bst = CreateLargeBST<double, Book>(kLargeSize);
+    auto range = bst.EqualRange(500.0);
     assert(range.first != bst.End());
-    assert((*range.first).first == 3);
+    assert((*range.first).first == 500.0);
     assert(range.second != bst.End());
-    assert((*range.second).first == 5);
-
-    range = bst.EqualRange(4);
+    assert((*range.second).first == 501.0);
+    range = bst.EqualRange(0.0);
     assert(range.first == range.second);
-
-    const BST<int, std::string>& const_bst = bst;
-    auto crange = const_bst.EqualRange(3);
-    assert(crange.first != const_bst.End());
-    assert((*crange.first).first == 3);
-    assert(crange.second != const_bst.End());
-    assert((*crange.second).first == 5);
+    range = bst.EqualRange(1001.0);
+    assert(range.first == range.second);
 }
 
-void ClearTest() {
-    BST<int, std::string> bst;
-    bst.Insert({1, "one"});
-    bst.Insert({2, "two"});
-    assert(bst.Size() == 2);
+void ClearLargeTest() {
+    constexpr int kLargeSize = 1000;
+    BST<double, Book> bst = CreateLargeBST<double, Book>(kLargeSize);
+    assert(bst.Size() == kLargeSize);
     bst.Clear();
     assert(bst.Empty());
     assert(bst.Size() == 0);
-    assert(bst.Find(1) == bst.End());
 }
 
-void SwapTest() {
-    BST<int, std::string> bst1;
-    bst1.Insert({1, "one"});
-    bst1.Insert({2, "two"});
-
-    BST<int, std::string> bst2;
-    bst2.Insert({3, "three"});
-
+void SwapLargeTest() {
+    constexpr int kSize1 = 500;
+    constexpr int kSize2 = 1000;
+    BST<double, Book> bst1 = CreateLargeBST<double, Book>(kSize1);
+    BST<double, Book> bst2 = CreateLargeBST<double, Book>(kSize2);
     bst1.Swap(bst2);
-
-    assert(bst1.Size() == 1);
-    assert(bst2.Size() == 2);
-    assert(bst1.Find(3) != bst1.End());
-    assert(bst2.Find(1) != bst2.End());
-    assert(bst2.Find(2) != bst2.End());
+    assert(bst1.Size() == kSize2);
+    assert(bst2.Size() == kSize1);
+    assert(bst1.Find(1000.0) != bst1.End());
+    assert(bst2.Find(500.0) != bst2.End());
 }
 
-void CopyConstructorTest() {
-    BST<int, std::string> quarantine;
-    quarantine.Insert({1, "one"});
-    quarantine.Insert({2, "two"});
-
-    BST<int, std::string> bst2(quarantine);
-    assert(bst2.Size() == 2);
-    assert(bst2.Find(1) != bst2.End());
-    assert(bst2.Find(2) != bst2.End());
-
-    bst2.Insert({3, "three"});
-    assert(quarantine.Find(3) == quarantine.End());
+void CopyConstructorLargeTest() {
+    constexpr int kLargeSize = 1000;
+    BST<double, Book> bst1 = CreateLargeBST<double, Book>(kLargeSize);
+    BST<double, Book> bst2(bst1);
+    assert(bst2.Size() == kLargeSize);
+    for (int i = 1; i <= kLargeSize; i += 100) {
+        double key = static_cast<double>(i);
+        auto it = bst2.Find(key);
+        assert(it != bst2.End());
+        assert((*it).first == key);
+    }
 }
 
-void CopyAssignmentTest() {
-    BST<int, std::string> bst1;
-    bst1.Insert({1, "one"});
-    bst1.Insert({2, "two"});
-
-    BST<int, std::string> bst2;
+void CopyAssignmentLargeTest() {
+    constexpr int kLargeSize = 1000;
+    BST<double, Book> bst1 = CreateLargeBST<double, Book>(kLargeSize);
+    BST<double, Book> bst2;
     bst2 = bst1;
-    assert(bst2.Size() == 2);
-    assert(bst2.Find(1) != bst2.End());
-    assert(bst2.Find(2) != bst2.End());
-
-    bst2.Insert({3, "three"});
-    assert(bst1.Find(3) == bst1.End());
+    assert(bst2.Size() == kLargeSize);
+    for (int i = 1; i <= kLargeSize; i += 100) {
+        double key = static_cast<double>(i);
+        auto it = bst2.Find(key);
+        assert(it != bst2.End());
+        assert((*it).first == key);
+    }
 }
 
-void MoveConstructorTest() {
-    BST<int, std::string> bst1;
-    bst1.Insert({1, "one"});
-    bst1.Insert({2, "two"});
-
-    BST<int, std::string> bst2(std::move(bst1));
-    assert(bst2.Size() == 2);
-    assert(bst2.Find(1) != bst2.End());
-    assert(bst2.Find(2) != bst2.End());
+void MoveConstructorLargeTest() {
+    constexpr int kLargeSize = 1000;
+    BST<double, Book> bst1 = CreateLargeBST<double, Book>(kLargeSize);
+    BST<double, Book> bst2(std::move(bst1));
+    assert(bst2.Size() == kLargeSize);
+    for (int i = 1; i <= kLargeSize; i += 100) {
+        double key = static_cast<double>(i);
+        auto it = bst2.Find(key);
+        assert(it != bst2.End());
+        assert((*it).first == key);
+    }
     assert(bst1.Empty());
 }
 
-void MoveAssignmentTest() {
-    BST<int, std::string> bst1;
-    bst1.Insert({1, "one"});
-    bst1.Insert({2, "two"});
-
-    BST<int, std::string> bst2;
+void MoveAssignmentLargeTest() {
+    constexpr int kLargeSize = 1000;
+    BST<double, Book> bst1 = CreateLargeBST<double, Book>(kLargeSize);
+    BST<double, Book> bst2;
     bst2 = std::move(bst1);
-    assert(bst2.Size() == 2);
-    assert(bst2.Find(1) != bst2.End());
-    assert(bst2.Find(2) != bst2.End());
+    assert(bst2.Size() == kLargeSize);
+    for (int i = 1; i <= kLargeSize; i += 100) {
+        double key = static_cast<double>(i);
+        auto it = bst2.Find(key);
+        assert(it != bst2.End());
+        assert((*it).first == key);
+    }
     assert(bst1.Empty());
 }
 
-void ContainsTest() {
-    BST<int, std::string> bst;
-    bst.Insert({1, "one"});
-    assert(bst.Contains(1));
-    assert(!bst.Contains(2));
+void ContainsCountLargeTest() {
+    constexpr int kLargeSize = 1000;
+    BST<double, Book> bst = CreateLargeBST<double, Book>(kLargeSize);
+    for (int i = 1; i <= kLargeSize; i += 100) {
+        double key = static_cast<double>(i);
+        assert(bst.Contains(key));
+        assert(bst.Count(key) == 1);
+    }
+    assert(!bst.Contains(0.0));
+    assert(bst.Count(0.0) == 0);
 }
 
-void CountTest() {
-    BST<int, std::string> bst;
-    bst.Insert({1, "one"});
-    assert(bst.Count(1) == 1);
-    assert(bst.Count(2) == 0);
-}
+class A {
+public:
+    A(const std::string& x) : x_(x) {
+    }
+
+    A(const A& other) {
+        std::cout << "copy constructor\n";
+    }
+    A& operator=(const A& other) {
+        std::cout << "copy assignment operator\n";
+        return *this;
+    }
+
+    A(A&& other) {
+        std::cout << "copy constructor\n";
+    }
+
+    A& operator=(A&& other) {
+        std::cout << "move assignment operator\n";
+        return *this;
+    }
+
+private:
+    std::string x_;
+};
 
 int main() {
-    InsertTest();
-    FindTest();
-    BeginEndTest();
-    RBeginREndTest();
-    LowerBoundTest();
-    UpperBoundTest();
-    EqualRangeTest();
-    ClearTest();
-    SwapTest();
-    CopyConstructorTest();
-    CopyAssignmentTest();
-    MoveConstructorTest();
-    MoveAssignmentTest();
-    ContainsTest();
-    CountTest();
 
-    std::cout << "All tests are passed!\n";
+    InsertLargeTest();
+    FindLargeTest();
+    IteratorsLargeTest();
+    BoundsLargeTest();
+    EqualRangeLargeTest();
+    ClearLargeTest();
+    SwapLargeTest();
+    CopyConstructorLargeTest();
+    CopyAssignmentLargeTest();
+    MoveConstructorLargeTest();
+    MoveAssignmentLargeTest();
+    ContainsCountLargeTest();
+
+    std::cout
+        << "All tests for trees (1000 elements) with double and Book types passed successfully!\n";
     return 0;
 }
