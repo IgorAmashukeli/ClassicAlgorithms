@@ -227,8 +227,15 @@ private:
     std::string x_;
 };
 
+void PrintVector(const std::vector<std::pair<int, int>>& vec) {
+    for (auto it = vec.begin(); it != vec.end(); ++it) {
+        std::cout << it->first << "\n";
+    }
+}
+
 int main() {
 
+    /*
     InsertLargeTest();
     FindLargeTest();
     IteratorsLargeTest();
@@ -241,8 +248,33 @@ int main() {
     MoveConstructorLargeTest();
     MoveAssignmentLargeTest();
     ContainsCountLargeTest();
+    */
 
-    std::cout
-        << "All tests for trees (1000 elements) with double and Book types passed successfully!\n";
-    return 0;
+    std::random_device rd;
+    std::mt19937 g(rd());
+
+    for (int k = 0; k < 200; ++k) {
+        BST<int, int> x;
+        int n = 500;
+        std::vector<std::pair<int, int>> ins_vec = {};
+
+        for (auto i = 0; i < n; ++i) {
+            ins_vec.push_back({i, i});
+        }
+
+        std::shuffle(ins_vec.begin(), ins_vec.end(), g);
+
+        x.Insert(ins_vec.begin(), ins_vec.end());
+
+        std::vector<int> out_vec;
+
+        for (auto it = ins_vec.begin(); it != ins_vec.end(); ++it) {
+            out_vec.push_back(it->first);
+        }
+        std::sort(out_vec.begin(), out_vec.end());
+
+        auto res = x.Traverse();
+
+        assert(out_vec == res);
+    }
 }

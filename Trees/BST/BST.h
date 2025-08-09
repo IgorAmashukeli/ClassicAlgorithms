@@ -1,12 +1,15 @@
 #pragma once
 
+#include <cassert>
 #include <cstddef>
 #include <limits>
 #include <memory>
 #include <stack>
 #include <stdexcept>
+#include <tuple>
 #include <utility>
 #include <iostream>
+#include <vector>
 
 template <typename K>
 bool Equivalent(const K& key_1, const K& key_2) {
@@ -622,6 +625,62 @@ public:
         return (root_ == nullptr);
     }
 
+    void PrintStack(const std::vector<std::tuple<Node<K, V>*, bool, bool>>& my_stack) const {
+        std::cout << "stack state is:\n";
+        for (auto it = my_stack.begin(); it != my_stack.end(); ++it) {
+            std::cout << std::get<0>(*it)->GetKey() << " " << std::boolalpha << std::get<1>(*it)
+                      << " " << std::boolalpha << std::get<2>(*it) << "\n";
+        }
+        std::cout << "\n";
+    }
+
+    std::vector<K> Traverse() const {
+        std::vector<K> result;
+        if (Empty()) {
+            return result;
+        }
+        Node<K, V>* node = root_.get();
+
+        std::stack<std::tuple<Node<K, V>*, bool, bool>> nodes;
+        nodes.push({node, false, false});
+
+        while (!nodes.empty()) {
+            auto top_other_node = std::get<0>(nodes.top());
+            auto visit_left = std::get<1>(nodes.top());
+            auto visit_right = std::get<2>(nodes.top());
+
+            nodes.pop();
+
+            if (LeftNotVisited(top_other_node, visit_left) && RightNull(top_other_node)) {
+                nodes.push({top_other_node, true, false});
+                nodes.push({top_other_node->GetLeft().get(), false, false});
+            } else if (LeftNotVisited(top_other_node, visit_left) &&
+                       RightNotVisited(top_other_node, visit_right)) {
+                nodes.push({top_other_node->GetRight().get(), false, false});
+                nodes.push({top_other_node, true, false});
+                nodes.push({top_other_node->GetLeft().get(), false, false});
+            } else if (LeftVisited(top_other_node, visit_left) &&
+                       RightNotVisited(top_other_node, visit_right)) {
+                nodes.pop();
+                nodes.push({top_other_node, true, true});
+                nodes.push({top_other_node->GetRight().get(), false, false});
+            } else if (LeftVisited(top_other_node, visit_left) && RightNull(top_other_node)) {
+                MakeVisited(nodes, top_other_node);
+            } else if (LeftVisited(top_other_node, visit_left) &&
+                       RightVisited(top_other_node, visit_right)) {
+                MakeVisited(nodes, top_other_node);
+            } else if (LeftNull(top_other_node) && RightNotVisited(top_other_node, visit_right)) {
+                nodes.push({top_other_node, true, true});
+                nodes.push({top_other_node->GetRight().get(), false, false});
+            } else if (LeftNull(top_other_node) && RightVisited(top_other_node, visit_right)) {
+                MakeVisited(nodes, top_other_node);
+            } else if (LeftNull(top_other_node) && RightNull(top_other_node)) {
+                MakeVisited(nodes, top_other_node);
+            }
+        }
+        return result;
+    }
+
 private:
     Node<K, V>* FindNode(const K& key) const {
         Node<K, V>* node = root_.get();
@@ -676,29 +735,117 @@ private:
         }
     }
 
-    // not finished yet
-    void Copy(const BST& other) {
-        if (other.Empty()) {
+    void MarkVisited(std::stack<std::tuple<Node<K, V>*, bool, bool>>& nodes, bool left) const {
+        auto top_other_node = std::get<0>(nodes.top());
+        auto visit_left = std::get<1>(nodes.top());
+        auto visit_right = std::get<2>(nodes.top());
+        nodes.pop();
+        if (left) {
+            nodes.push({top_other_node, true, visit_right});
+        } else {
+            nodes.push({top_other_node, visit_left, true});
+        }
+    }
+
+    void MakeVisited(std::stack<std::tuple<Node<K, V>*, bool, bool>>& nodes,
+                     Node<K, V>* child) const {
+        if (nodes.size() == 0) {
             return;
         }
-        Node<K, V>* other_node = other.root_.get();
-        BaseNode<K, V>* prev_node = std::addressof(rend_node_);
-
-        while (true) {
-
-            while (other_node->GetLeft() != nullptr) {
-                other_node = other_node->GetLeft();
-            }
-
-            std::unique_ptr<Node<K, V>> node =
-                std::make_unique<Node<K, V>>(other_node->GetKey(), other_node->GetValue(), nullptr,
-                                             nullptr, other_node->GetSize());
-
-            while (other_node->GetRight() == nullptr && other_node->GetParent() != nullptr) {
-                other_node = other_node->GetParent();
-            }
-            other_node = other_node->GetRight();
+        auto top_other_node = std::get<0>(nodes.top());
+        if (top_other_node->GetLeft().get() == child) {
+            MarkVisited(nodes, true);
+        } else {
+            MarkVisited(nodes, false);
         }
+    }
+
+    bool LeftNull(Node<K, V>* node) const {
+        return node->GetLeft() == nullptr;
+    }
+
+    bool RightNull(Node<K, V>* node) const {
+        return node->GetRight() == nullptr;
+    }
+
+    bool LeftVisited(Node<K, V>* node, bool visit_left) const {
+        return (node->GetLeft() != nullptr) && (visit_left);
+    }
+
+    bool RightVisited(Node<K, V>* node, bool visit_right) const {
+        return (node->GetRight() != nullptr) && (visit_right);
+    }
+
+    bool LeftNotVisited(Node<K, V>* node, bool visit_left) const {
+        return (node->GetLeft() != nullptr) && (!visit_left);
+    }
+
+    bool RightNotVisited(Node<K, V>* node, bool visit_right) const {
+        return (node->GetRight() != nullptr) && (!visit_right);
+    }
+
+    // not finished
+    std::vector<K> Copy() const {
+        std::vector<K> result;
+        if (Empty()) {
+            return result;
+        }
+        Node<K, V>* node = root_.get();
+
+        std::stack<std::tuple<Node<K, V>*, bool, bool>> other_nodes;
+        std::stack<std::unique_ptr<Node<K, V>>> nodes;
+        other_nodes.push({node, false, false});
+
+        while (!other_nodes.empty()) {
+            auto top_other_node = std::get<0>(other_nodes.top());
+            auto visit_left = std::get<1>(other_nodes.top());
+            auto visit_right = std::get<2>(other_nodes.top());
+
+            other_nodes.pop();
+
+            if (LeftNotVisited(top_other_node, visit_left) && RightNull(top_other_node)) {
+
+                other_nodes.push({top_other_node, true, false});
+                other_nodes.push({top_other_node->GetLeft().get(), false, false});
+
+            } else if (LeftNotVisited(top_other_node, visit_left) &&
+                       RightNotVisited(top_other_node, visit_right)) {
+
+                other_nodes.push({top_other_node->GetRight().get(), false, false});
+                other_nodes.push({top_other_node, true, false});
+                other_nodes.push({top_other_node->GetLeft().get(), false, false});
+
+            } else if (LeftVisited(top_other_node, visit_left) &&
+                       RightNotVisited(top_other_node, visit_right)) {
+
+                other_nodes.pop();
+                other_nodes.push({top_other_node, true, true});
+                other_nodes.push({top_other_node->GetRight().get(), false, false});
+
+            } else if (LeftVisited(top_other_node, visit_left) && RightNull(top_other_node)) {
+
+                MakeVisited(other_nodes, top_other_node);
+
+            } else if (LeftVisited(top_other_node, visit_left) &&
+                       RightVisited(top_other_node, visit_right)) {
+
+                MakeVisited(other_nodes, top_other_node);
+
+            } else if (LeftNull(top_other_node) && RightNotVisited(top_other_node, visit_right)) {
+
+                other_nodes.push({top_other_node, true, true});
+                other_nodes.push({top_other_node->GetRight().get(), false, false});
+
+            } else if (LeftNull(top_other_node) && RightVisited(top_other_node, visit_right)) {
+
+                MakeVisited(other_nodes, top_other_node);
+
+            } else if (LeftNull(top_other_node) && RightNull(top_other_node)) {
+
+                MakeVisited(other_nodes, top_other_node);
+            }
+        }
+        return result;
     }
 
     std::unique_ptr<Node<K, V>> Copy(const std::unique_ptr<Node<K, V>>& other_node,
