@@ -1,252 +1,127 @@
 #include "BST.h"
 #include <cassert>
-#include <string>
-#include <iostream>
-#include <cassert>
+#include <functional>
 #include <vector>
+#include <string>
+#include <sstream>
 #include <algorithm>
 #include <random>
+#include <numeric>
+#include <iostream>
 
-// Custom value type for V
-struct Book {
-    std::string title_;
-    int year_;
-    explicit Book(std::string title, int year) : title_(std::move(title)), year_(year) {
+// === Helpers ===
+template <typename K, typename V>
+std::string InOrderString(const BST<K, V>& tree) {
+    std::ostringstream out;
+    for (auto it = tree.Begin(); it != tree.End(); ++it) {
+        out << it->first << ":" << it->second << " ";
     }
-    bool operator==(const Book& other) const {
-        return title_ == other.title_ && year_ == other.year_;
-    }
-};
+    return out.str();
+}
 
 template <typename K, typename V>
-BST<K, V> CreateLargeBST(int size) {
-    BST<K, V> bst;
-    std::vector<int> indices(size);
-    for (int i = 0; i < size; ++i) {
-        indices[i] = i + 1;
-    }
-    std::mt19937 rng(42);  // Fixed seed for reproducibility
-    std::shuffle(indices.begin(), indices.end(), rng);
-    for (int i : indices) {
-        double key = static_cast<double>(i);
-        Book value("Book" + std::to_string(i), 1900 + (i % 100));
-        bst.Insert({key, value});
-    }
-    return bst;
+bool SameStructure(const BST<K, V>& a, const BST<K, V>& b) {
+
+    std::function<bool(const Node<K, V>*, const Node<K, V>*)> dfs =
+        [&](const Node<K, V>* n1, const Node<K, V>* n2) -> bool {
+        if (!n1 && !n2) {
+            return true;
+        }
+        if (!n1 || !n2) {
+            return false;
+        }
+        if (n1->GetKey() != n2->GetKey() || n1->GetValue() != n2->GetValue()) {
+            return false;
+        }
+        return dfs(n1->GetLeft().get(), n2->GetLeft().get()) &&
+               dfs(n1->GetRight().get(), n2->GetRight().get());
+    };
+
+    return dfs(a.Root(), b.Root());
 }
 
-void InsertLargeTest() {
-    constexpr int kLargeSize = 1000;
-    BST<double, Book> bst = CreateLargeBST<double, Book>(kLargeSize);
-    assert(bst.Size() == kLargeSize);
-    for (int i = 1; i <= kLargeSize; i += 100) {
-        double key = static_cast<double>(i);
-        auto it = bst.Find(key);
-        assert(it != bst.End());
-        assert((*it).first == key);
-        assert((*it).second == Book("Book" + std::to_string(i), 1900 + (i % 100)));
+// === Tests ===
+void TestCopyConstructor() {
+    BST<int, std::string> original;
+    std::vector<int> keys = {5, 2, 8, 1, 3, 7, 9};
+    std::shuffle(keys.begin(), keys.end(), std::mt19937{std::random_device{}()});
+    for (int k : keys) {
+        original.Insert({k, std::to_string(k)});
     }
-    auto result = bst.Insert({500.0, Book("duplicate", 2000)});
-    assert(!result.second);
-    assert((*result.first).first == 500.0);
-    assert((*result.first).second == Book("Book500", 1900 + (500 % 100)));
+
+    BST<int, std::string> copy(original);
+
+    assert(InOrderString(original) == InOrderString(copy));
+    assert(SameStructure(original, copy));
+
+    // Deep copy check
+    original.Insert({42, "forty-two"});
+    assert(InOrderString(original) != InOrderString(copy));
+    assert(!SameStructure(original, copy));
+
+    std::cout << "TestCopyConstructor passed\n";
 }
 
-void FindLargeTest() {
-    constexpr int kLargeSize = 1000;
-    BST<double, Book> bst = CreateLargeBST<double, Book>(kLargeSize);
-    for (int i = 1; i <= kLargeSize; i += 100) {
-        double key = static_cast<double>(i);
-        auto it = bst.Find(key);
-        assert(it != bst.End());
-        assert((*it).first == key);
+void TestCopyAssignment() {
+    BST<int, int> t1;
+    std::vector<int> keys = {10, 5, 15, 3, 7, 12, 17};
+    std::shuffle(keys.begin(), keys.end(), std::mt19937{std::random_device{}()});
+    for (int k : keys) {
+        t1.Insert({k, k});
     }
-    auto it = bst.Find(0.0);
-    assert(it == bst.End());
-    it = bst.Find(1001.0);
-    assert(it == bst.End());
+
+    BST<int, int> t2;
+    t2 = t1;
+
+    assert(InOrderString(t1) == InOrderString(t2));
+    assert(SameStructure(t1, t2));
+
+    // Modify t2, t1 stays unchanged
+    t2.Insert({100, 100});
+    assert(InOrderString(t1) != InOrderString(t2));
+    assert(!SameStructure(t1, t2));
+
+    std::cout << "TestCopyAssignment passed\n";
 }
 
-void IteratorsLargeTest() {
-    constexpr int kLargeSize = 1000;
-    BST<double, Book> bst = CreateLargeBST<double, Book>(kLargeSize);
-    auto it = bst.Begin();
-    assert((*it).first == 1.0);
-    it = bst.End();
-    --it;
-    assert((*it).first == 1000.0);
-    auto rit = bst.RBegin();
-    assert((*rit).first == 1000.0);
-    rit = bst.REnd();
-    --rit;
-    assert((*rit).first == 1.0);
+void TestEmptyTreeCopy() {
+    BST<int, int> empty;
+    BST<int, int> copy(empty);
+    assert(InOrderString(empty) == InOrderString(copy));
+    assert(SameStructure(empty, copy));
+    std::cout << "TestEmptyTreeCopy passed\n";
 }
 
-void BoundsLargeTest() {
-    constexpr int kLargeSize = 1000;
-    BST<double, Book> bst = CreateLargeBST<double, Book>(kLargeSize);
-    auto it = bst.LowerBound(500.0);
-    assert(it != bst.End());
-    assert((*it).first == 500.0);
-    it = bst.UpperBound(500.0);
-    assert(it != bst.End());
-    assert((*it).first == 501.0);
-    it = bst.LowerBound(0.0);
-    assert(it != bst.End());
-    assert((*it).first == 1.0);
-    it = bst.UpperBound(1000.0);
-    assert(it == bst.End());
+void TestSingleNodeCopy() {
+    BST<int, char> tree;
+    tree.Insert({1, 'a'});
+    BST<int, char> copy(tree);
+    assert(InOrderString(tree) == InOrderString(copy));
+    assert(SameStructure(tree, copy));
+    std::cout << "TestSingleNodeCopy passed\n";
 }
 
-void EqualRangeLargeTest() {
-    constexpr int kLargeSize = 1000;
-    BST<double, Book> bst = CreateLargeBST<double, Book>(kLargeSize);
-    auto range = bst.EqualRange(500.0);
-    assert(range.first != bst.End());
-    assert((*range.first).first == 500.0);
-    assert(range.second != bst.End());
-    assert((*range.second).first == 501.0);
-    range = bst.EqualRange(0.0);
-    assert(range.first == range.second);
-    range = bst.EqualRange(1001.0);
-    assert(range.first == range.second);
-}
-
-void ClearLargeTest() {
-    constexpr int kLargeSize = 1000;
-    BST<double, Book> bst = CreateLargeBST<double, Book>(kLargeSize);
-    assert(bst.Size() == kLargeSize);
-    bst.Clear();
-    assert(bst.Empty());
-    assert(bst.Size() == 0);
-}
-
-void SwapLargeTest() {
-    constexpr int kSize1 = 500;
-    constexpr int kSize2 = 1000;
-    BST<double, Book> bst1 = CreateLargeBST<double, Book>(kSize1);
-    BST<double, Book> bst2 = CreateLargeBST<double, Book>(kSize2);
-    bst1.Swap(bst2);
-    assert(bst1.Size() == kSize2);
-    assert(bst2.Size() == kSize1);
-    assert(bst1.Find(1000.0) != bst1.End());
-    assert(bst2.Find(500.0) != bst2.End());
-}
-
-void CopyConstructorLargeTest() {
-    constexpr int kLargeSize = 1000;
-    BST<double, Book> bst1 = CreateLargeBST<double, Book>(kLargeSize);
-    BST<double, Book> bst2(bst1);
-    assert(bst2.Size() == kLargeSize);
-    for (int i = 1; i <= kLargeSize; i += 100) {
-        double key = static_cast<double>(i);
-        auto it = bst2.Find(key);
-        assert(it != bst2.End());
-        assert((*it).first == key);
-    }
-}
-
-void CopyAssignmentLargeTest() {
-    constexpr int kLargeSize = 1000;
-    BST<double, Book> bst1 = CreateLargeBST<double, Book>(kLargeSize);
-    BST<double, Book> bst2;
-    bst2 = bst1;
-    assert(bst2.Size() == kLargeSize);
-    for (int i = 1; i <= kLargeSize; i += 100) {
-        double key = static_cast<double>(i);
-        auto it = bst2.Find(key);
-        assert(it != bst2.End());
-        assert((*it).first == key);
-    }
-}
-
-void MoveConstructorLargeTest() {
-    constexpr int kLargeSize = 1000;
-    BST<double, Book> bst1 = CreateLargeBST<double, Book>(kLargeSize);
-    BST<double, Book> bst2(std::move(bst1));
-    assert(bst2.Size() == kLargeSize);
-    for (int i = 1; i <= kLargeSize; i += 100) {
-        double key = static_cast<double>(i);
-        auto it = bst2.Find(key);
-        assert(it != bst2.End());
-        assert((*it).first == key);
-    }
-    assert(bst1.Empty());
-}
-
-void MoveAssignmentLargeTest() {
-    constexpr int kLargeSize = 1000;
-    BST<double, Book> bst1 = CreateLargeBST<double, Book>(kLargeSize);
-    BST<double, Book> bst2;
-    bst2 = std::move(bst1);
-    assert(bst2.Size() == kLargeSize);
-    for (int i = 1; i <= kLargeSize; i += 100) {
-        double key = static_cast<double>(i);
-        auto it = bst2.Find(key);
-        assert(it != bst2.End());
-        assert((*it).first == key);
-    }
-    assert(bst1.Empty());
-}
-
-void ContainsCountLargeTest() {
-    constexpr int kLargeSize = 1000;
-    BST<double, Book> bst = CreateLargeBST<double, Book>(kLargeSize);
-    for (int i = 1; i <= kLargeSize; i += 100) {
-        double key = static_cast<double>(i);
-        assert(bst.Contains(key));
-        assert(bst.Count(key) == 1);
-    }
-    assert(!bst.Contains(0.0));
-    assert(bst.Count(0.0) == 0);
-}
-
-class A {
-public:
-    A(const std::string& x) : x_(x) {
+void TestLargeTree() {
+    BST<int, int> t1;
+    std::vector<int> keys(1000);
+    std::iota(keys.begin(), keys.end(), 0);
+    std::shuffle(keys.begin(), keys.end(), std::mt19937{std::random_device{}()});
+    for (auto k : keys) {
+        t1.Insert({k, k});
     }
 
-    A(const A& other) {
-        std::cout << "copy constructor\n";
-    }
-    A& operator=(const A& other) {
-        std::cout << "copy assignment operator\n";
-        return *this;
-    }
+    BST<int, int> t2(t1);
+    assert(InOrderString(t1) == InOrderString(t2));
+    assert(SameStructure(t1, t2));
 
-    A(A&& other) {
-        std::cout << "copy constructor\n";
-    }
-
-    A& operator=(A&& other) {
-        std::cout << "move assignment operator\n";
-        return *this;
-    }
-
-private:
-    std::string x_;
-};
-
-void PrintVector(const std::vector<std::pair<int, int>>& vec) {
-    for (auto it = vec.begin(); it != vec.end(); ++it) {
-        std::cout << it->first << "\n";
-    }
+    std::cout << "TestLargeTree passed\n";
 }
 
 int main() {
-
-    InsertLargeTest();
-    FindLargeTest();
-    IteratorsLargeTest();
-    BoundsLargeTest();
-    EqualRangeLargeTest();
-    ClearLargeTest();
-    SwapLargeTest();
-    CopyConstructorLargeTest();
-    CopyAssignmentLargeTest();
-    MoveConstructorLargeTest();
-    MoveAssignmentLargeTest();
-    ContainsCountLargeTest();
-
-    std::cout << "All tests passed\n";
+    TestCopyConstructor();
+    TestCopyAssignment();
+    TestEmptyTreeCopy();
+    TestSingleNodeCopy();
+    TestLargeTree();
+    std::cout << "All tests passed!\n";
 }

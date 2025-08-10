@@ -204,6 +204,10 @@ public:
         RIGHT_NOT_VISITED = false
     };
 
+    Node<K, V>* Root() const {
+        return root_.get();
+    }
+
     using ValueType = std::pair<const K, V>;
     using Reference = ValueType&;
     using Pointer = ValueType*;
