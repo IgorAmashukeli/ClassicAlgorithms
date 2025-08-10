@@ -68,6 +68,17 @@ struct Node : public BaseNode<K, V> {
     Node(const K& key, const V& value, BaseNode<K, V>* prev, BaseNode<K, V>* next, size_t size)
         : key_value_(key, value), prev_(prev), next_(next), size_(size) {
     }
+    Node(const std::pair<const K, V>& key_value, BaseNode<K, V>* prev, BaseNode<K, V>* next,
+         size_t size)
+        : key_value_(key_value), prev_(prev), next_(next), size_(size) {
+    }
+    Node(std::pair<const K, V>&& key_value, BaseNode<K, V>* prev, BaseNode<K, V>* next, size_t size)
+        : key_value_(std::move(key_value)), prev_(prev), next_(next), size_(size) {
+    }
+    template <typename P>
+    Node(P&& key_value, BaseNode<K, V>* prev, BaseNode<K, V>* next, size_t size)
+        : key_value_(std::forward<P>(key_value)), prev_(prev), next_(next), size_(size) {
+    }
     const K& GetKey() const noexcept {
         return key_value_.first;
     }
@@ -634,62 +645,6 @@ public:
         return (root_ == nullptr);
     }
 
-    void PrintStack(const std::vector<std::tuple<Node<K, V>*, bool, bool>>& my_stack) const {
-        std::cout << "stack state is:\n";
-        for (auto it = my_stack.begin(); it != my_stack.end(); ++it) {
-            std::cout << std::get<0>(*it)->GetKey() << " " << std::boolalpha << std::get<1>(*it)
-                      << " " << std::boolalpha << std::get<2>(*it) << "\n";
-        }
-        std::cout << "\n";
-    }
-
-    std::vector<K> Traverse() const {
-        std::vector<K> result;
-        if (Empty()) {
-            return result;
-        }
-        Node<K, V>* node = root_.get();
-
-        std::stack<std::tuple<Node<K, V>*, bool, bool>> nodes;
-        nodes.push({node, LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
-
-        while (!nodes.empty()) {
-            auto top_other_node = std::get<0>(nodes.top());
-            auto visit_left = std::get<1>(nodes.top());
-            auto visit_right = std::get<2>(nodes.top());
-
-            nodes.pop();
-
-            if (LeftNotVisited(top_other_node, visit_left) && RightNull(top_other_node)) {
-                nodes.push({top_other_node, LEFT_VISITED, RIGHT_NOT_VISITED});
-                nodes.push({top_other_node->GetLeft().get(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
-            } else if (LeftNotVisited(top_other_node, visit_left) &&
-                       RightNotVisited(top_other_node, visit_right)) {
-                nodes.push({top_other_node->GetRight().get(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
-                nodes.push({top_other_node, LEFT_VISITED, RIGHT_NOT_VISITED});
-                nodes.push({top_other_node->GetLeft().get(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
-            } else if (LeftVisited(top_other_node, visit_left) &&
-                       RightNotVisited(top_other_node, visit_right)) {
-                nodes.pop();
-                nodes.push({top_other_node, LEFT_VISITED, RIGHT_VISITED});
-                nodes.push({top_other_node->GetRight().get(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
-            } else if (LeftVisited(top_other_node, visit_left) && RightNull(top_other_node)) {
-                MakeVisited(nodes, top_other_node);
-            } else if (LeftVisited(top_other_node, visit_left) &&
-                       RightVisited(top_other_node, visit_right)) {
-                MakeVisited(nodes, top_other_node);
-            } else if (LeftNull(top_other_node) && RightNotVisited(top_other_node, visit_right)) {
-                nodes.push({top_other_node, LEFT_VISITED, RIGHT_VISITED});
-                nodes.push({top_other_node->GetRight().get(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
-            } else if (LeftNull(top_other_node) && RightVisited(top_other_node, visit_right)) {
-                MakeVisited(nodes, top_other_node);
-            } else if (LeftNull(top_other_node) && RightNull(top_other_node)) {
-                MakeVisited(nodes, top_other_node);
-            }
-        }
-        return result;
-    }
-
 private:
     Node<K, V>* FindNode(const K& key) const {
         Node<K, V>* node = root_.get();
@@ -900,7 +855,6 @@ private:
         std::stack<std::tuple<Node<K, V>*, bool, bool>> other_nodes;
         std::stack<std::unique_ptr<Node<K, V>>> nodes;
         other_nodes.push({other.root_.get(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
-
         while (!other_nodes.empty()) {
             auto top_other_node = std::get<0>(other_nodes.top());
             auto visit_left = std::get<1>(other_nodes.top());
@@ -909,37 +863,7 @@ private:
             CopyIteration(other, other_nodes, nodes, top_other_node, visit_left, visit_right,
                           prev_node);
         }
-
         return prev_node;
-    }
-
-    std::unique_ptr<Node<K, V>> Copy(const std::unique_ptr<Node<K, V>>& other_node,
-                                     BaseNode<K, V>*& prev_node) {
-        if (other_node == nullptr) {
-            return nullptr;
-        }
-
-        std::unique_ptr<Node<K, V>> lhs = Copy(other_node->GetLeft(), prev_node);
-
-        std::unique_ptr<Node<K, V>> node = std::make_unique<Node<K, V>>(
-            other_node->GetKey(), other_node->GetValue(), nullptr, nullptr, other_node->GetSize());
-
-        node->GetLeft() = std::move(lhs);
-        if (node->GetLeft() != nullptr) {
-            node->GetLeft()->GetParent() = node.get();
-        }
-
-        prev_node->GetNext() = node.get();
-        node.get()->GetPrev() = prev_node;
-
-        prev_node = node.get();
-
-        node->GetRight() = Copy(other_node->GetRight(), prev_node);
-        if (node->GetRight() != nullptr) {
-            node->GetRight()->GetParent() = node.get();
-        }
-
-        return node;
     }
 
     void ConnectPrevNext(Node<K, V>* node, BaseNode<K, V>* prev, BaseNode<K, V>* next) {
@@ -966,23 +890,20 @@ private:
 
         while (true) {
             if ((node == nullptr) && (parent == nullptr)) {
-                root_ = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
-                                                     std::addressof(rend_node_),
+                root_ = std::make_unique<Node<K, V>>(key_value, std::addressof(rend_node_),
                                                      std::addressof(end_node_), 1);
                 ConnectPrevNext(root_.get(), current_prev, current_next);
-                return {Iterator(node), true};
+                return {Iterator(root_.get()), true};
             }
             if ((node == nullptr) && (parent != nullptr) && left) {
-                parent->GetLeft() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
-                                                                 nullptr, nullptr, 1);
+                parent->GetLeft() = std::make_unique<Node<K, V>>(key_value, nullptr, nullptr, 1);
                 parent->GetLeft()->GetParent() = parent;
                 ConnectPrevNext(parent->GetLeft().get(), current_prev, current_next);
                 IncreaseSizeInBranch(parent);
                 return {Iterator(parent->GetLeft().get()), true};
             }
             if ((node == nullptr) && (parent != nullptr) && !left) {
-                parent->GetRight() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
-                                                                  nullptr, nullptr, 1);
+                parent->GetRight() = std::make_unique<Node<K, V>>(key_value, nullptr, nullptr, 1);
                 parent->GetRight()->GetParent() = parent;
                 ConnectPrevNext(parent->GetRight().get(), current_prev, current_next);
                 IncreaseSizeInBranch(parent);
@@ -1013,23 +934,22 @@ private:
 
         while (true) {
             if ((node == nullptr) && (parent == nullptr)) {
-                root_ = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
-                                                     std::addressof(rend_node_),
-                                                     std::addressof(end_node_), 1);
+                root_ = std::make_unique<Node<K, V>>(
+                    std::move(key_value), std::addressof(rend_node_), std::addressof(end_node_), 1);
                 ConnectPrevNext(root_.get(), current_prev, current_next);
-                return {Iterator(node), true};
+                return {Iterator(root_.get()), true};
             }
             if ((node == nullptr) && (parent != nullptr) && left) {
-                parent->GetLeft() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
-                                                                 nullptr, nullptr, 1);
+                parent->GetLeft() =
+                    std::make_unique<Node<K, V>>(std::move(key_value), nullptr, nullptr, 1);
                 parent->GetLeft()->GetParent() = parent;
                 ConnectPrevNext(parent->GetLeft().get(), current_prev, current_next);
                 IncreaseSizeInBranch(parent);
                 return {Iterator(parent->GetLeft().get()), true};
             }
             if ((node == nullptr) && (parent != nullptr) && !left) {
-                parent->GetRight() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
-                                                                  nullptr, nullptr, 1);
+                parent->GetRight() =
+                    std::make_unique<Node<K, V>>(std::move(key_value), nullptr, nullptr, 1);
                 parent->GetRight()->GetParent() = parent;
                 ConnectPrevNext(parent->GetRight().get(), current_prev, current_next);
                 IncreaseSizeInBranch(parent);
@@ -1061,23 +981,23 @@ private:
 
         while (true) {
             if ((node == nullptr) && (parent == nullptr)) {
-                root_ = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
+                root_ = std::make_unique<Node<K, V>>(std::forward<P>(key_value),
                                                      std::addressof(rend_node_),
                                                      std::addressof(end_node_), 1);
                 ConnectPrevNext(root_.get(), current_prev, current_next);
-                return {Iterator(node), true};
+                return {Iterator(root_.get()), true};
             }
             if ((node == nullptr) && (parent != nullptr) && left) {
-                parent->GetLeft() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
-                                                                 nullptr, nullptr, 1);
+                parent->GetLeft() =
+                    std::make_unique<Node<K, V>>(std::forward<P>(key_value), nullptr, nullptr, 1);
                 parent->GetLeft()->GetParent() = parent;
                 ConnectPrevNext(parent->GetLeft().get(), current_prev, current_next);
                 IncreaseSizeInBranch(parent);
                 return {Iterator(parent->GetLeft().get()), true};
             }
             if ((node == nullptr) && (parent != nullptr) && !left) {
-                parent->GetRight() = std::make_unique<Node<K, V>>(key_value.first, key_value.second,
-                                                                  nullptr, nullptr, 1);
+                parent->GetRight() =
+                    std::make_unique<Node<K, V>>(std::forward<P>(key_value), nullptr, nullptr, 1);
                 parent->GetRight()->GetParent() = parent;
                 ConnectPrevNext(parent->GetRight().get(), current_prev, current_next);
                 IncreaseSizeInBranch(parent);
