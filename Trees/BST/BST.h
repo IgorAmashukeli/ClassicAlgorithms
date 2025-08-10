@@ -804,125 +804,102 @@ private:
         return node;
     }
 
+    void PushOrRoot(const BST<K, V>& other, std::stack<std::unique_ptr<Node<K, V>>>& nodes,
+                    std::unique_ptr<Node<K, V>>&& node, Node<K, V>* top_other_node) {
+        if (top_other_node == other.root_.get()) {
+            root_ = std::move(node);
+        } else {
+            nodes.push(std::move(node));
+        }
+    }
+
+    void LNVRN(std::stack<std::tuple<Node<K, V>*, bool, bool>>& other_nodes,
+               Node<K, V>* top_other_node) {
+        other_nodes.push({top_other_node, LEFT_VISITED, RIGHT_VISITED});
+        other_nodes.push({top_other_node->GetLeft().get(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
+    }
+    void LNVRNV(std::stack<std::tuple<Node<K, V>*, bool, bool>>& other_nodes,
+                Node<K, V>* top_other_node) {
+        other_nodes.push({top_other_node->GetRight().get(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
+        other_nodes.push({top_other_node, LEFT_VISITED, RIGHT_NOT_VISITED});
+        other_nodes.push({top_other_node->GetLeft().get(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
+    }
+    void LVRNV(std::stack<std::tuple<Node<K, V>*, bool, bool>>& other_nodes,
+               Node<K, V>* top_other_node) {
+        other_nodes.pop();
+        other_nodes.push({top_other_node, LEFT_VISITED, RIGHT_VISITED});
+        other_nodes.push({top_other_node->GetRight().get(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
+    }
+    void LNRNV(std::stack<std::tuple<Node<K, V>*, bool, bool>>& other_nodes,
+               Node<K, V>* top_other_node) {
+        other_nodes.push({top_other_node, LEFT_VISITED, RIGHT_VISITED});
+        other_nodes.push({top_other_node->GetRight().get(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
+    }
+    std::unique_ptr<Node<K, V>> ConnectL(std::unique_ptr<Node<K, V>>&& node,
+                                         std::stack<std::unique_ptr<Node<K, V>>>& nodes) {
+        node->GetLeft() = std::move(nodes.top());
+        node->GetLeft()->GetParent() = node.get();
+        nodes.pop();
+        return node;
+    }
+    std::unique_ptr<Node<K, V>> ConnectR(std::stack<std::unique_ptr<Node<K, V>>>& nodes) {
+        auto rhs = std::move(nodes.top());
+        nodes.pop();
+        auto current = std::move(nodes.top());
+        nodes.pop();
+        current->GetRight() = std::move(rhs);
+        current->GetRight()->GetParent() = current.get();
+        return current;
+    }
+
     BaseNode<K, V>* Copy(const BST<K, V>& other) {
         if (other.Empty()) {
             return nullptr;
         }
         Node<K, V>* other_node = other.root_.get();
         BaseNode<K, V>* prev_node = std::addressof(rend_node_);
-
         std::stack<std::tuple<Node<K, V>*, bool, bool>> other_nodes;
         std::stack<std::unique_ptr<Node<K, V>>> nodes;
-        other_nodes.push({other_node, false, false});
+        other_nodes.push({other_node, LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
 
         while (!other_nodes.empty()) {
             auto top_other_node = std::get<0>(other_nodes.top());
             auto visit_left = std::get<1>(other_nodes.top());
             auto visit_right = std::get<2>(other_nodes.top());
-
             other_nodes.pop();
 
             if (LeftNotVisited(top_other_node, visit_left) && RightNull(top_other_node)) {
-                // nothing to do with unique_ptr on nodes stack
-
-                other_nodes.push({top_other_node, true, false});
-                other_nodes.push({top_other_node->GetLeft().get(), false, false});
-
+                LNVRN(other_nodes, top_other_node);
             } else if (LeftNotVisited(top_other_node, visit_left) &&
                        RightNotVisited(top_other_node, visit_right)) {
-                // nothing to do with unique_ptr on nodes stack
-
-                other_nodes.push({top_other_node->GetRight().get(), false, false});
-                other_nodes.push({top_other_node, true, false});
-                other_nodes.push({top_other_node->GetLeft().get(), false, false});
-
+                LNVRNV(other_nodes, top_other_node);
             } else if (LeftVisited(top_other_node, visit_left) &&
                        RightNotVisited(top_other_node, visit_right)) {
-                // creating new node, linking with left, poping left, pushing current
-
                 auto node = CreateCopied(top_other_node, prev_node);
-                node->GetLeft() = std::move(nodes.top());
-                node->GetLeft()->GetParent() = node.get();
-                nodes.pop();
+                node = ConnectL(std::move(node), nodes);
                 nodes.push(std::move(node));
-
-                other_nodes.pop();
-                other_nodes.push({top_other_node, true, true});
-                other_nodes.push({top_other_node->GetRight().get(), false, false});
-
+                LVRNV(other_nodes, top_other_node);
             } else if (LeftVisited(top_other_node, visit_left) && RightNull(top_other_node)) {
-                // creating new node, linking with left, poping left
                 auto node = CreateCopied(top_other_node, prev_node);
-                node->GetLeft() = std::move(nodes.top());
-                node->GetLeft()->GetParent() = node.get();
-                nodes.pop();
-
-                // if in the root, then save, else push the current to the stack
-                if (top_other_node == other.root_.get()) {
-                    root_ = std::move(node);
-                } else {
-                    nodes.push(std::move(node));
-                }
-
+                node = ConnectL(std::move(node), nodes);
+                PushOrRoot(other, nodes, std::move(node), top_other_node);
                 MakeVisited(other_nodes, top_other_node);
-
             } else if (LeftVisited(top_other_node, visit_left) &&
                        RightVisited(top_other_node, visit_right)) {
-                // popping right, popping current, linking current with right
-                // to the stack
-                auto rhs = std::move(nodes.top());
-                nodes.pop();
-                auto current = std::move(nodes.top());
-                nodes.pop();
-                current->GetRight() = std::move(rhs);
-                current->GetRight()->GetParent() = current.get();
-
-                // if in the root, then save, else push the current to the stack
-                if (top_other_node == other.root_.get()) {
-                    root_ = std::move(current);
-                } else {
-                    nodes.push(std::move(current));
-                }
-
+                auto current = ConnectR(nodes);
+                PushOrRoot(other, nodes, std::move(current), top_other_node);
                 MakeVisited(other_nodes, top_other_node);
-
             } else if (LeftNull(top_other_node) && RightNotVisited(top_other_node, visit_right)) {
-                // creating new node, push the current
                 auto node = CreateCopied(top_other_node, prev_node);
                 nodes.push(std::move(node));
-
-                other_nodes.push({top_other_node, true, true});
-                other_nodes.push({top_other_node->GetRight().get(), false, false});
-
+                LNRNV(other_nodes, top_other_node);
             } else if (LeftNull(top_other_node) && RightVisited(top_other_node, visit_right)) {
-                // popping right, popping current, linking current with right
-                auto rhs = std::move(nodes.top());
-                nodes.pop();
-                auto current = std::move(nodes.top());
-                nodes.pop();
-                current->GetRight() = std::move(rhs);
-                current->GetRight()->GetParent() = current.get();
-
-                // pushing current back to the stack
-                if (top_other_node == other.root_.get()) {
-                    root_ = std::move(current);
-                } else {
-                    nodes.push(std::move(current));
-                }
-
+                auto current = ConnectR(nodes);
+                PushOrRoot(other, nodes, std::move(current), top_other_node);
                 MakeVisited(other_nodes, top_other_node);
-
             } else if (LeftNull(top_other_node) && RightNull(top_other_node)) {
-                // creating new node, push the current
                 auto node = CreateCopied(top_other_node, prev_node);
-
-                // if in the root, then save, else push the current to the stack
-                if (top_other_node == other.root_.get()) {
-                    root_ = std::move(node);
-                } else {
-                    nodes.push(std::move(node));
-                }
-
+                PushOrRoot(other, nodes, std::move(node), top_other_node);
                 MakeVisited(other_nodes, top_other_node);
             }
         }
