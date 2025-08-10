@@ -852,56 +852,62 @@ private:
         return current;
     }
 
+    void CopyIteration(const BST<K, V>& other,
+                       std::stack<std::tuple<Node<K, V>*, bool, bool>>& other_nodes,
+                       std::stack<std::unique_ptr<Node<K, V>>>& nodes, Node<K, V>* top_other_node,
+                       bool visit_left, bool visit_right, BaseNode<K, V>*& prev_node) {
+        if (LeftNotVisited(top_other_node, visit_left) && RightNull(top_other_node)) {
+            LNVRN(other_nodes, top_other_node);
+        } else if (LeftNotVisited(top_other_node, visit_left) &&
+                   RightNotVisited(top_other_node, visit_right)) {
+            LNVRNV(other_nodes, top_other_node);
+        } else if (LeftVisited(top_other_node, visit_left) &&
+                   RightNotVisited(top_other_node, visit_right)) {
+            auto node = CreateCopied(top_other_node, prev_node);
+            node = ConnectL(std::move(node), nodes);
+            nodes.push(std::move(node));
+            LVRNV(other_nodes, top_other_node);
+        } else if (LeftVisited(top_other_node, visit_left) && RightNull(top_other_node)) {
+            auto node = CreateCopied(top_other_node, prev_node);
+            node = ConnectL(std::move(node), nodes);
+            PushOrRoot(other, nodes, std::move(node), top_other_node);
+            MakeVisited(other_nodes, top_other_node);
+        } else if (LeftVisited(top_other_node, visit_left) &&
+                   RightVisited(top_other_node, visit_right)) {
+            auto current = ConnectR(nodes);
+            PushOrRoot(other, nodes, std::move(current), top_other_node);
+            MakeVisited(other_nodes, top_other_node);
+        } else if (LeftNull(top_other_node) && RightNotVisited(top_other_node, visit_right)) {
+            auto node = CreateCopied(top_other_node, prev_node);
+            nodes.push(std::move(node));
+            LNRNV(other_nodes, top_other_node);
+        } else if (LeftNull(top_other_node) && RightVisited(top_other_node, visit_right)) {
+            auto current = ConnectR(nodes);
+            PushOrRoot(other, nodes, std::move(current), top_other_node);
+            MakeVisited(other_nodes, top_other_node);
+        } else if (LeftNull(top_other_node) && RightNull(top_other_node)) {
+            auto node = CreateCopied(top_other_node, prev_node);
+            PushOrRoot(other, nodes, std::move(node), top_other_node);
+            MakeVisited(other_nodes, top_other_node);
+        }
+    }
+
     BaseNode<K, V>* Copy(const BST<K, V>& other) {
         if (other.Empty()) {
             return nullptr;
         }
-        Node<K, V>* other_node = other.root_.get();
         BaseNode<K, V>* prev_node = std::addressof(rend_node_);
         std::stack<std::tuple<Node<K, V>*, bool, bool>> other_nodes;
         std::stack<std::unique_ptr<Node<K, V>>> nodes;
-        other_nodes.push({other_node, LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
+        other_nodes.push({other.root_.get(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
 
         while (!other_nodes.empty()) {
             auto top_other_node = std::get<0>(other_nodes.top());
             auto visit_left = std::get<1>(other_nodes.top());
             auto visit_right = std::get<2>(other_nodes.top());
             other_nodes.pop();
-
-            if (LeftNotVisited(top_other_node, visit_left) && RightNull(top_other_node)) {
-                LNVRN(other_nodes, top_other_node);
-            } else if (LeftNotVisited(top_other_node, visit_left) &&
-                       RightNotVisited(top_other_node, visit_right)) {
-                LNVRNV(other_nodes, top_other_node);
-            } else if (LeftVisited(top_other_node, visit_left) &&
-                       RightNotVisited(top_other_node, visit_right)) {
-                auto node = CreateCopied(top_other_node, prev_node);
-                node = ConnectL(std::move(node), nodes);
-                nodes.push(std::move(node));
-                LVRNV(other_nodes, top_other_node);
-            } else if (LeftVisited(top_other_node, visit_left) && RightNull(top_other_node)) {
-                auto node = CreateCopied(top_other_node, prev_node);
-                node = ConnectL(std::move(node), nodes);
-                PushOrRoot(other, nodes, std::move(node), top_other_node);
-                MakeVisited(other_nodes, top_other_node);
-            } else if (LeftVisited(top_other_node, visit_left) &&
-                       RightVisited(top_other_node, visit_right)) {
-                auto current = ConnectR(nodes);
-                PushOrRoot(other, nodes, std::move(current), top_other_node);
-                MakeVisited(other_nodes, top_other_node);
-            } else if (LeftNull(top_other_node) && RightNotVisited(top_other_node, visit_right)) {
-                auto node = CreateCopied(top_other_node, prev_node);
-                nodes.push(std::move(node));
-                LNRNV(other_nodes, top_other_node);
-            } else if (LeftNull(top_other_node) && RightVisited(top_other_node, visit_right)) {
-                auto current = ConnectR(nodes);
-                PushOrRoot(other, nodes, std::move(current), top_other_node);
-                MakeVisited(other_nodes, top_other_node);
-            } else if (LeftNull(top_other_node) && RightNull(top_other_node)) {
-                auto node = CreateCopied(top_other_node, prev_node);
-                PushOrRoot(other, nodes, std::move(node), top_other_node);
-                MakeVisited(other_nodes, top_other_node);
-            }
+            CopyIteration(other, other_nodes, nodes, top_other_node, visit_left, visit_right,
+                          prev_node);
         }
 
         return prev_node;
