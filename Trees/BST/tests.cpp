@@ -1,113 +1,158 @@
 #include <cassert>
-#include <string>
 #include <iostream>
-#include "BST.h"
 
-// Custom comparator for descending order
-template <typename T>
-struct Greater {
-    bool operator()(const T& a, const T& b) const {
-        return a > b;
+// Include your SetBST implementation here
+#include "SetBST.h"
+
+// 1. Large tree insert test
+void TestLargeInsert() {
+    SetBST<int> s;
+    const int n = 1000;
+    for (int i = 0; i < n; ++i) {
+        auto res = s.Insert(i);
+        assert(res.second);           // inserted
+        assert(*res.first == i);
+    }
+    assert(s.Size() == n);
+    assert(!s.Empty());
+
+    // Inserting duplicates returns false
+    for (int i = 0; i < n; ++i) {
+        auto res = s.Insert(i);
+        assert(!res.second);
+        assert(*res.first == i);
+    }
+}
+
+// 2. Custom key type with tricky comparison
+struct TrickyKey {
+    int x, y;
+
+    TrickyKey(int a, int b) : x(a), y(b) {}
+
+    bool operator<(const TrickyKey& other) const {
+        int sum1 = x + y;
+        int sum2 = other.x + other.y;
+        if (sum1 != sum2) {return sum1 < sum2;}
+        if (x != other.x) {return x > other.x;} // descending
+        return y < other.y;
+    }
+
+    bool operator==(const TrickyKey& other) const {
+        return x == other.x && y == other.y;
     }
 };
 
-// Helper: build a large BST
-template <typename K, typename V, typename Comp>
-BST<K, V, Comp> CreateLargeBST(int size, Comp comp = Comp{}) {
-    BST<K, V, Comp> bst(comp);
-    for (int i = 1; i <= size; ++i) {
-        bst.Insert({i, "value" + std::to_string(i)});
+void TestTrickyKey() {
+    SetBST<TrickyKey> s;
+
+    auto res1 = s.Insert(TrickyKey(1, 2));
+    assert(res1.second);
+    auto res2 = s.Insert(TrickyKey(2, 1));
+    assert(res2.second);
+    auto res3 = s.Insert(TrickyKey(3, 0));
+    assert(res3.second);
+
+    // Insert duplicate
+    auto res4 = s.Insert(TrickyKey(1, 2));
+    assert(!res4.second);
+
+    // Check size
+    assert(s.Size() == 3);
+
+    // Check find
+    assert(s.Contains(TrickyKey(2, 1)));
+    assert(!s.Contains(TrickyKey(0, 3)));
+
+    // Iterate in order, verify order using operator<
+    TrickyKey prev = TrickyKey(-1000, -1000);
+    for (auto it = s.Begin(); it != s.End(); ++it) {
+        // Elements should be strictly increasing
+        assert(prev < *it);
+        prev = *it;
     }
-    return bst;
 }
 
-template <typename Comp>
-void RunTestsForComparator() {
-    const int large_size = 5000;
-    using BSTType = BST<int, std::string, Comp>;
+// 3. Test Find, LowerBound, UpperBound, EqualRange
+void TestBounds() {
+    SetBST<int> s;
+    s.Insert({1, 3, 5, 7, 9});
 
-    // Insert test
-    {
-        BSTType bst = CreateLargeBST<int, std::string, Comp>(large_size);
-        assert(bst.Size() == large_size);
-        for (int i = 1; i <= large_size; i += 500) {
-            auto it = bst.Find(i);
-            assert(it != bst.End());
-            assert((*it).first == i);
-        }
-        auto result = bst.Insert({2500, "duplicate"});
-        assert(result.second == false);
-    }
+    assert(s.Find(5) != s.End());
+    assert(s.Find(6) == s.End());
 
-    // Find test
-    {
-        BSTType bst = CreateLargeBST<int, std::string, Comp>(large_size);
-        for (int i = 1; i <= large_size; i += 500) {
-            assert(bst.Contains(i));
-        }
-        assert(!bst.Contains(0));
-    }
+    // LowerBound
+    auto lb = s.LowerBound(4);
+    assert(lb != s.End() && *lb == 5);
 
-    // Iterators test
-    {
-        BSTType bst = CreateLargeBST<int, std::string, Comp>(large_size);
-        auto it = bst.Begin();
-        auto rit = bst.RBegin();
-        assert(it != bst.End());
-        assert(rit != bst.REnd());
-    }
+    lb = s.LowerBound(5);
+    assert(lb != s.End() && *lb == 5);
 
-    // Bounds test
-    {
-        BSTType bst = CreateLargeBST<int, std::string, Comp>(large_size);
-        auto it = bst.LowerBound(2500);
-        assert(it != bst.End());
-    }
+    lb = s.LowerBound(10);
+    assert(lb == s.End());
 
-    // EqualRange test
-    {
-        BSTType bst = CreateLargeBST<int, std::string, Comp>(large_size);
-        auto range = bst.EqualRange(2500);
-        assert(range.first != bst.End());
-    }
+    // UpperBound
+    auto ub = s.UpperBound(5);
+    assert(ub != s.End() && *ub == 7);
 
-    // Clear test
-    {
-        BSTType bst = CreateLargeBST<int, std::string, Comp>(large_size);
-        bst.Clear();
-        assert(bst.Empty());
-    }
+    ub = s.UpperBound(9);
+    assert(ub == s.End());
 
-    // Swap test (only between same comparator types)
-    {
-        BSTType bst1 = CreateLargeBST<int, std::string, Comp>(2500);
-        BSTType bst2 = CreateLargeBST<int, std::string, Comp>(5000);
-        bst1.Swap(bst2); // OK: same comparator type
-        assert(bst1.Size() == 5000);
-        assert(bst2.Size() == 2500);
-    }
+    // EqualRange (unique keys → range is one element or empty)
+    auto er = s.EqualRange(3);
+    assert(er.first != s.End() && er.second != s.End());
+    assert(*er.first == 3);
+    assert(*er.second == 5);
 
-    // Copy/Move tests
-    {
-        BSTType bst1 = CreateLargeBST<int, std::string, Comp>(large_size);
-        BSTType bst2(bst1);
-        assert(bst2.Size() == large_size);
+    auto er2 = s.EqualRange(6);
+    assert(er2.first == er2.second);
+}
 
-        BSTType bst3;
-        bst3 = bst1;
-        assert(bst3.Size() == large_size);
+// 4. Test swap and move semantics
+void TestSwapAndMove() {
+    SetBST<int> s1;
+    s1.Insert(1);
+    s1.Insert(2);
 
-        BSTType bst4(std::move(bst1));
-        assert(bst4.Size() == large_size);
+    SetBST<int> s2;
+    s2.Insert(10);
+    s2.Insert(20);
 
-        BSTType bst5;
-        bst5 = std::move(bst4);
-        assert(bst5.Size() == large_size);
-    }
+    s1.Swap(s2);
+    assert(s1.Contains(10));
+    assert(s2.Contains(1));
+
+    // Move constructor
+    SetBST<int> s3(std::move(s1));
+    assert(s3.Contains(10));
+    assert(s3.Contains(20));
+    assert(s1.Empty());
+
+    // Move assignment
+    SetBST<int> s4;
+    s4 = std::move(s2);
+    assert(s4.Contains(1));
+    assert(s4.Contains(2));
+    assert(s2.Empty());
+}
+
+// 5. Test Clear and Empty
+void TestClearAndEmpty() {
+    SetBST<int> s;
+    assert(s.Empty());
+    s.Insert(42);
+    assert(!s.Empty());
+    s.Clear();
+    assert(s.Empty());
 }
 
 int main() {
-    RunTestsForComparator<std::less<int>>();
-    RunTestsForComparator<Greater<int>>();
-    std::cout << "All comparator variant tests passed!\n";
+    TestLargeInsert();
+    TestTrickyKey();
+    TestBounds();
+    TestSwapAndMove();
+    TestClearAndEmpty();
+
+    std::cout << "All tests passed!\n";
+    return 0;
 }
