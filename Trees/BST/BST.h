@@ -10,10 +10,11 @@
 #include <utility>
 #include <iostream>
 #include <vector>
+#include "compressed_pair.h"
 
-template <typename K>
-bool Equivalent(const K& key_1, const K& key_2) {
-    return !(key_1 < key_2) && (!(key_2 < key_1));
+template <typename K, typename Compare>
+bool Equivalent(const K& key_1, const K& key_2, Compare compare) {
+    return !(compare(key_1, key_2)) && (!compare(key_2, key_1));
 }
 
 template <typename K, typename V>
@@ -205,7 +206,7 @@ struct EndNode : public BaseNode<K, V> {
     }
 };
 
-template <typename K, typename V>
+template <typename K, typename V, typename Compare = std::less<K>>
 class BST {
 public:
     enum {
@@ -215,9 +216,7 @@ public:
         RIGHT_NOT_VISITED = false
     };
 
-    Node<K, V>* Root() const {
-        return root_.get();
-    }
+    
 
     using ValueType = std::pair<const K, V>;
     using Reference = ValueType&;
@@ -465,7 +464,8 @@ public:
         const BaseNode<K, V>* node_ = nullptr;
     };
 
-    BST() = default;
+    BST() : BST(Compare()) {}
+    explicit BST(const Compare& compare) : root_compare_(nullptr, compare) {} 
     BST(const BST& other) {
         BaseNode<K, V>* max_node = Copy(other);
         ConnectEndNodesAfterCopy(max_node);
@@ -491,14 +491,14 @@ public:
     ~BST() = default;
 
     void Clear() noexcept {
-        root_ = nullptr;
+        GetRoot() = nullptr;
         rend_node_.GetPrev() = nullptr;
         rend_node_.GetNext() = std::addressof(end_node_);
         end_node_.GetNext() = nullptr;
         end_node_.GetPrev() = std::addressof(rend_node_);
     }
-    void Swap(BST<K, V>& other) {
-        std::swap(root_, other.root_);
+    void Swap(BST& other) {
+        std::swap(GetRoot(), other.GetRoot());
         ConnectEndNodesAfterSwap(other);
     }
     std::pair<Iterator, bool> Insert(const ValueType& key_value) {
@@ -554,7 +554,7 @@ public:
         if (node == nullptr) {
             return End();
         }
-        if (Equivalent(node->GetKey(), key)) {
+        if (Equivalent(node->GetKey(), key, KeyCompare())) {
             return Iterator{node->GetNext()};
         }
         return Iterator{node};
@@ -574,7 +574,7 @@ public:
         if (node == nullptr) {
             return {End(), End()};
         }
-        if (Equivalent(node->GetKey(), key)) {
+        if (Equivalent(node->GetKey(), key, KeyCompare())) {
             return {Iterator{node}, Iterator{node->GetNext()}};
         }
         return {Iterator{node}, Iterator{node}};
@@ -633,27 +633,39 @@ public:
     }
 
     size_t Size() const noexcept {
-        if (root_ == nullptr) {
+        if (GetRoot() == nullptr) {
             return 0;
         }
-        return root_->GetSize();
+        return GetRoot()->GetSize();
     }
     size_t MaxSize() const noexcept {
         return (std::numeric_limits<std::ptrdiff_t>::max() / sizeof(Node<K, V>));
     }
     bool Empty() const noexcept {
-        return (root_ == nullptr);
+        return (GetRoot() == nullptr);
+    }
+    Compare KeyCompare() const {
+        return root_compare_.GetSecond();
+    }
+    const std::unique_ptr<Node<K, V>>& GetRoot() const {
+        return root_compare_.GetFirst();
+    }
+    std::unique_ptr<Node<K, V>>& GetRoot() {
+        return root_compare_.GetFirst();
+    }
+    Node<K, V>* GetRootPtr() const {
+        return GetRoot().get();
     }
 
 private:
     Node<K, V>* FindNode(const K& key) const {
-        Node<K, V>* node = root_.get();
+        Node<K, V>* node = GetRootPtr();
 
         while (node != nullptr) {
-            if (Equivalent(key, node->GetKey())) {
+            if (Equivalent(key, node->GetKey(), KeyCompare())) {
                 return node;
             }
-            if (key < node->GetKey()) {
+            if (KeyCompare()(key, node->GetKey())) {
                 node = node->GetLeft().get();
             } else {
                 node = node->GetRight().get();
@@ -663,14 +675,14 @@ private:
     }
 
     Node<K, V>* FindLowerBound(const K& key) const {
-        Node<K, V>* node = root_.get();
+        Node<K, V>* node = GetRootPtr();
         Node<K, V>* best_bound = nullptr;
 
         while (node != nullptr) {
-            if (Equivalent(key, node->GetKey())) {
+            if (Equivalent(key, node->GetKey(), KeyCompare())) {
                 return node;
             }
-            if (key < node->GetKey()) {
+            if (KeyCompare()(key, node->GetKey())) {
                 best_bound = node;
                 node = node->GetLeft().get();
             } else {
@@ -680,8 +692,8 @@ private:
         return best_bound;
     }
 
-    void ConnectEndNodesAfterSwap(BST<K, V>& other) {
-        if (root_ != nullptr) {
+    void ConnectEndNodesAfterSwap(BST& other) {
+        if (GetRoot() != nullptr) {
             std::swap(rend_node_.GetNext(), other.rend_node_.GetNext());
             rend_node_.GetNext()->GetPrev() = std::addressof(rend_node_);
             other.rend_node_.GetNext()->GetPrev() = std::addressof(other.rend_node_);
@@ -693,7 +705,7 @@ private:
     }
 
     void ConnectEndNodesAfterCopy(BaseNode<K, V>* max_node) {
-        if (root_ != nullptr) {
+        if (GetRoot() != nullptr) {
             max_node->GetNext() = std::addressof(end_node_);
             end_node_.GetPrev() = max_node;
         }
@@ -759,10 +771,10 @@ private:
         return node;
     }
 
-    void PushOrRoot(const BST<K, V>& other, std::stack<std::unique_ptr<Node<K, V>>>& nodes,
+    void PushOrRoot(const BST& other, std::stack<std::unique_ptr<Node<K, V>>>& nodes,
                     std::unique_ptr<Node<K, V>>&& node, Node<K, V>* top_other_node) {
-        if (top_other_node == other.root_.get()) {
-            root_ = std::move(node);
+        if (top_other_node == other.GetRoot().get()) {
+            GetRoot() = std::move(node);
         } else {
             nodes.push(std::move(node));
         }
@@ -807,7 +819,7 @@ private:
         return current;
     }
 
-    void CopyIteration(const BST<K, V>& other,
+    void CopyIteration(const BST& other,
                        std::stack<std::tuple<Node<K, V>*, bool, bool>>& other_nodes,
                        std::stack<std::unique_ptr<Node<K, V>>>& nodes, Node<K, V>* top_other_node,
                        bool visit_left, bool visit_right, BaseNode<K, V>*& prev_node) {
@@ -847,14 +859,14 @@ private:
         }
     }
 
-    BaseNode<K, V>* Copy(const BST<K, V>& other) {
+    BaseNode<K, V>* Copy(const BST& other) {
         if (other.Empty()) {
             return nullptr;
         }
         BaseNode<K, V>* prev_node = std::addressof(rend_node_);
         std::stack<std::tuple<Node<K, V>*, bool, bool>> other_nodes;
         std::stack<std::unique_ptr<Node<K, V>>> nodes;
-        other_nodes.push({other.root_.get(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
+        other_nodes.push({other.GetRootPtr(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
         while (!other_nodes.empty()) {
             auto top_other_node = std::get<0>(other_nodes.top());
             auto visit_left = std::get<1>(other_nodes.top());
@@ -869,7 +881,6 @@ private:
     void ConnectPrevNext(Node<K, V>* node, BaseNode<K, V>* prev, BaseNode<K, V>* next) {
         node->GetNext() = next;
         next->GetPrev() = node;
-
         node->GetPrev() = prev;
         prev->GetNext() = node;
     }
@@ -882,7 +893,7 @@ private:
     }
 
     std::pair<Iterator, bool> InsertNode(const ValueType& key_value) {
-        Node<K, V>* node = root_.get();
+        Node<K, V>* node = GetRootPtr();
         Node<K, V>* parent = nullptr;
         bool left = false;
         BaseNode<K, V>* current_prev = std::addressof(rend_node_);
@@ -890,10 +901,10 @@ private:
 
         while (true) {
             if ((node == nullptr) && (parent == nullptr)) {
-                root_ = std::make_unique<Node<K, V>>(key_value, std::addressof(rend_node_),
+                GetRoot() = std::make_unique<Node<K, V>>(key_value, std::addressof(rend_node_),
                                                      std::addressof(end_node_), 1);
-                ConnectPrevNext(root_.get(), current_prev, current_next);
-                return {Iterator(root_.get()), true};
+                ConnectPrevNext(GetRootPtr(), current_prev, current_next);
+                return {Iterator(GetRootPtr()), true};
             }
             if ((node == nullptr) && (parent != nullptr) && left) {
                 parent->GetLeft() = std::make_unique<Node<K, V>>(key_value, nullptr, nullptr, 1);
@@ -912,7 +923,7 @@ private:
             if ((node != nullptr) && Equivalent(node->GetKey(), key_value.first)) {
                 return {Iterator(node), false};
             }
-            if ((node != nullptr) && (key_value.first < node->GetKey())) {
+            if ((node != nullptr) && (KeyCompare()(key_value.first, node->GetKey()))) {
                 left = true;
                 parent = node;
                 current_next = node;
@@ -926,7 +937,7 @@ private:
         }
     }
     std::pair<Iterator, bool> InsertNode(ValueType&& key_value) {
-        Node<K, V>* node = root_.get();
+        Node<K, V>* node = GetRootPtr();
         Node<K, V>* parent = nullptr;
         bool left = false;
         BaseNode<K, V>* current_prev = std::addressof(rend_node_);
@@ -934,10 +945,10 @@ private:
 
         while (true) {
             if ((node == nullptr) && (parent == nullptr)) {
-                root_ = std::make_unique<Node<K, V>>(
+                GetRoot() = std::make_unique<Node<K, V>>(
                     std::move(key_value), std::addressof(rend_node_), std::addressof(end_node_), 1);
-                ConnectPrevNext(root_.get(), current_prev, current_next);
-                return {Iterator(root_.get()), true};
+                ConnectPrevNext(GetRootPtr(), current_prev, current_next);
+                return {Iterator(GetRootPtr()), true};
             }
             if ((node == nullptr) && (parent != nullptr) && left) {
                 parent->GetLeft() =
@@ -955,10 +966,10 @@ private:
                 IncreaseSizeInBranch(parent);
                 return {Iterator(parent->GetRight().get()), true};
             }
-            if ((node != nullptr) && Equivalent(node->GetKey(), key_value.first)) {
+            if ((node != nullptr) && Equivalent(node->GetKey(), key_value.first, KeyCompare())) {
                 return {Iterator(node), false};
             }
-            if ((node != nullptr) && (key_value.first < node->GetKey())) {
+            if ((node != nullptr) && (KeyCompare()(key_value.first, node->GetKey()))) {
                 left = true;
                 parent = node;
                 current_next = node;
@@ -973,7 +984,7 @@ private:
     }
     template <typename P>
     std::pair<Iterator, bool> InsertNode(P&& key_value) {
-        Node<K, V>* node = root_.get();
+        Node<K, V>* node = GetRootPtr();
         Node<K, V>* parent = nullptr;
         bool left = false;
         BaseNode<K, V>* current_prev = std::addressof(rend_node_);
@@ -981,11 +992,11 @@ private:
 
         while (true) {
             if ((node == nullptr) && (parent == nullptr)) {
-                root_ = std::make_unique<Node<K, V>>(std::forward<P>(key_value),
+                GetRoot() = std::make_unique<Node<K, V>>(std::forward<P>(key_value),
                                                      std::addressof(rend_node_),
                                                      std::addressof(end_node_), 1);
-                ConnectPrevNext(root_.get(), current_prev, current_next);
-                return {Iterator(root_.get()), true};
+                ConnectPrevNext(GetRootPtr(), current_prev, current_next);
+                return {Iterator(GetRootPtr()), true};
             }
             if ((node == nullptr) && (parent != nullptr) && left) {
                 parent->GetLeft() =
@@ -1003,10 +1014,10 @@ private:
                 IncreaseSizeInBranch(parent);
                 return {Iterator(parent->GetRight().get()), true};
             }
-            if ((node != nullptr) && Equivalent(node->GetKey(), key_value.first)) {
+            if ((node != nullptr) && Equivalent(node->GetKey(), key_value.first, KeyCompare())) {
                 return {Iterator(node), false};
             }
-            if ((node != nullptr) && (key_value.first < node->GetKey())) {
+            if ((node != nullptr) && (KeyCompare()(key_value.first, node->GetKey()))) {
                 left = true;
                 parent = node;
                 current_next = node;
@@ -1019,32 +1030,34 @@ private:
             }
         }
     }
-
-    std::unique_ptr<Node<K, V>> root_;
+    CompressedPair<std::unique_ptr<Node<K, V>>, Compare> root_compare_;
     EndNode<K, V> rend_node_{nullptr, std::addressof(end_node_)};
     EndNode<K, V> end_node_{std::addressof(rend_node_), nullptr};
 };
 
-template <typename K, typename V>
-bool operator==(const BST<K, V>& lhs, const BST<K, V>& rhs) {
+template <typename K, typename V, typename Compare>
+bool operator==(const BST<K, V, Compare>& lhs, const BST<K, V, Compare>& rhs) {
     if (lhs.Size() != rhs.Size()) {
         return false;
     }
 
+    Compare compare = lhs.KeyCompare();
+
+
     for (auto it = lhs.Begin(), jt = rhs.Begin(); it != lhs.End(); ++it, ++jt) {
-        if (!Equivalent(it->first, jt->first) || (it->second != jt->second)) {
+        if (!Equivalent(it->first, jt->first, compare) || (it->second != jt->second)) {
             return false;
         }
     }
     return true;
 }
 
-template <typename K, typename V>
-void Swap(const BST<K, V>& lhs, const BST<K, V>& rhs) {
+template <typename K, typename V, typename Compare>
+void Swap(const BST<K, V, Compare>& lhs, const BST<K, V, Compare>& rhs) {
     lhs.Swap(rhs);
 }
 
-template <typename K, typename V>
-bool operator!=(const BST<K, V>& lhs, const BST<K, V>& rhs) {
+template <typename K, typename V, typename Compare>
+bool operator!=(const BST<K, V, Compare>& lhs, const BST<K, V, Compare>& rhs) {
     return (lhs != rhs);
 }
