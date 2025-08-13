@@ -599,34 +599,32 @@ public:
     ConstReverseIterator CREnd() const noexcept {
         return ConstReverseIterator{std::addressof(rend_node_)};
     }
+    
     Iterator SelectInd0(size_t i) {
-        if (i >= Size()) {
-            return End();
-        }
-
-        
+        return SelectInd1(i + 1);
     }
     ConstIterator SelectInd0(size_t i) const {
-        if (i >= Size()) {
-            return End();
-        }
+        return SelectInd1(i + 1);
 
     }
     Iterator SelectInd1(size_t i) {
-        if (i == 0) {
+        if (i > Size()) {
             return End();
         }
-        return SelectInd0(i - 1);
+        return Iterator(SelectNode(i));
     }
     ConstIterator SelectInd1(size_t i) const {
-        if (i == 0) {
+        if (i > Size()) {
             return End();
         }
-        return SelectInd0(i - 1);
-
+        return ConstIterator(SelectNode(i));
     }
-    size_t Rank(const K& key) const {
-        
+    
+    size_t RankInd1(const K& key) const {
+        return RankKey(key);
+    }
+    size_t RankInd0(const K& key) const {
+        return RankInd1(key) - 1;
     }
 
     size_t Size() const noexcept {
@@ -1026,6 +1024,50 @@ private:
                 node = node->GetRight().get();
             }
         }
+    }
+
+    size_t GetNumInSubTree(SetNode<K>* node) const {
+        if (node == nullptr || node->GetLeft() == nullptr) {
+            return 1;
+        }
+        return (node->GetLeft()->GetSize() + 1);
+    }
+
+    SetNode<K>* SelectNode(size_t i) const {
+        SetNode<K>* node = GetRootPtr();
+        size_t current_size = GetNumInSubTree(node);
+        while (current_size != i) {
+            if (i < current_size) {
+                node = node->GetLeft().get();
+            } else {
+                node = node->GetRight().get();
+                i -= current_size;       
+            }
+            current_size = GetNumInSubTree(node);
+        }
+        return node;
+    }
+
+    size_t RankKey(const K& key) const {
+        SetNode<K>* node = GetRootPtr();
+        size_t current_size = GetNumInSubTree(node);
+
+        while (node != nullptr) {
+            //std::cout << node->GetKey() << " " << current_size << "\n";
+            if (Equivalent(key, node->GetKey(), KeyCompare())) {
+                return current_size;
+            }
+            if (KeyCompare()(key, node->GetKey())) {
+                size_t parent_size = GetNumInSubTree(node);
+                node = node->GetLeft().get();
+                current_size = current_size - parent_size + GetNumInSubTree(node);
+            } else {
+                node = node->GetRight().get();
+                current_size += GetNumInSubTree(node);
+            }
+        }
+        //std::cout << current_size << "\n";
+        return current_size; 
     }
 
     CompressedPair<std::unique_ptr<SetNode<K>>, Compare> root_compare_;
