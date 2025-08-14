@@ -1118,7 +1118,7 @@ private:
         }
     }
 
-    void FixSizeHeightAfterLeftRotate(SetNode<K>* node) {
+    void FixSizeHeightAfterRotate(SetNode<K>* node) {
         node->GetHeight() =
             std::max(GetNodeHeight(node->GetLeft()), GetNodeHeight(node->GetRight())) + 1;
         node->GetSize() = GetNodeSize(node->GetLeft()) + GetNodeSize(node->GetRight()) + 1;
@@ -1127,16 +1127,16 @@ private:
     // may be written
     void RotateLeft(std::unique_ptr<SetNode<K>>& node) {
 
+        assert(node != nullptr);
+        assert(node->GetRight() != nullptr);
+
         std::unique_ptr<SetNode<K>>& right_child = node->GetRight();
         std::unique_ptr<SetNode<K>>& left_subtree = node->GetLeft();
         std::unique_ptr<SetNode<K>>& middle_subtree = right_child->GetLeft();
         std::unique_ptr<SetNode<K>>& right_subtree = right_child->GetRight();
 
-        assert(node != nullptr);
-        assert(right_child != nullptr);
-
         auto parent_ptr = node->GetParent();
-        bool left_node = (parent_ptr != nullptr) && (parent_ptr->GetLeft().get() = node.get());
+        bool left_node = (parent_ptr != nullptr) && (parent_ptr->GetLeft().get() == node.get());
         auto node_ptr = GetReleased(node);
         auto right_child_ptr = GetReleased(right_child);
         auto left_subtree_ptr = GetReleased(left_subtree);
@@ -1148,14 +1148,36 @@ private:
         ConnectAfterRotation(node_ptr, left_subtree_ptr, true);
         ConnectAfterRotation(node_ptr, middle_subtree, false);
         ConnectAfterRotation(right_child_ptr, right_subtree_ptr, false);
-        FixSizeHeightAfterLeftRotate(node_ptr);
-        FixSizeHeightAfterLeftRotate(right_child_ptr);
+        FixSizeHeightAfterRotate(node_ptr);
+        FixSizeHeightAfterRotate(right_child_ptr);
     }
 
-    // not written yet
+    // maybe written
     void RotateRight(std::unique_ptr<SetNode<K>>& node) {
+
+        assert(node != nullptr);
+        assert(node->GetLeft() != nullptr);
+
         std::unique_ptr<SetNode<K>>& left_child = node->GetLeft();
-        // TO DO
+        std::unique_ptr<SetNode<K>>& left_subtree = left_child->GetLeft();
+        std::unique_ptr<SetNode<K>>& middle_subtree = left_child->GetRight();
+        std::unique_ptr<SetNode<K>>& right_subtree = node->GetRight();
+
+        auto parent_ptr = node->GetParent();
+        bool left_node = (parent_ptr != nullptr) && (parent_ptr->GetLeft().get() == node.get());
+        auto node_ptr = GetReleased(node);
+        auto left_child_ptr = GetReleased(left_child);
+        auto left_subtree_ptr = GetReleased(left_subtree);
+        auto middle_subtree_ptr = GetReleased(middle_subtree);
+        auto right_subtree_ptr = GetReleased(right_subtree);
+
+        ConnectAfterRotation(parent_ptr, left_child_ptr, left_node);
+        ConnectAfterRotation(left_child_ptr, node_ptr, false);
+        ConnectAfterRotation(left_child_ptr, left_subtree_ptr, true);
+        ConnectAfterRotation(node_ptr, middle_subtree, true);
+        ConnectAfterRotation(node_ptr, right_subtree, false);
+        FixSizeHeightAfterRotate(node_ptr);
+        FixSizeHeightAfterRotate(left_child_ptr);
     }
 
     CompressedPair<std::unique_ptr<SetNode<K>>, Compare> root_compare_;
