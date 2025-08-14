@@ -115,10 +115,10 @@ struct SetNode : public SetBaseNode<K> {
         return size_;
     }
     ssize_t GetHeight() const {
-        throw height_;
+        return height_;
     }
     ssize_t& GetHeight() {
-        throw height_;
+        return height_;
     }
     bool IsSetEndNode() const noexcept {
         return false;
@@ -494,6 +494,9 @@ public:
     template <typename P>
     std::pair<Iterator, bool> Insert(P&& key) {
         return InsertSetNode(std::forward<P>(key));
+    }
+    // balancing after insert -> not written yet
+    void BalanceAfterInsert() {
     }
     template <typename InputIt>
     void Insert(InputIt first, InputIt last) {
@@ -1115,13 +1118,17 @@ private:
             parent->GetLeft() = std::unique_ptr<SetNode<K>>(child);
         } else if (parent != nullptr) {
             parent->GetRight() = std::unique_ptr<SetNode<K>>(child);
+        } else {
+            GetRoot() = std::unique_ptr<SetNode<K>>(child);
         }
     }
 
     void FixSizeHeightAfterRotate(SetNode<K>* node) {
         node->GetHeight() =
-            std::max(GetNodeHeight(node->GetLeft()), GetNodeHeight(node->GetRight())) + 1;
-        node->GetSize() = GetNodeSize(node->GetLeft()) + GetNodeSize(node->GetRight()) + 1;
+            std::max(GetNodeHeight(node->GetLeft().get()), GetNodeHeight(node->GetRight().get())) +
+            1;
+        node->GetSize() =
+            GetNodeSize(node->GetLeft().get()) + GetNodeSize(node->GetRight().get()) + 1;
     }
 
     // may be written
@@ -1146,8 +1153,9 @@ private:
         ConnectAfterRotation(parent_ptr, right_child_ptr, left_node);
         ConnectAfterRotation(right_child_ptr, node_ptr, true);
         ConnectAfterRotation(node_ptr, left_subtree_ptr, true);
-        ConnectAfterRotation(node_ptr, middle_subtree, false);
+        ConnectAfterRotation(node_ptr, middle_subtree_ptr, false);
         ConnectAfterRotation(right_child_ptr, right_subtree_ptr, false);
+
         FixSizeHeightAfterRotate(node_ptr);
         FixSizeHeightAfterRotate(right_child_ptr);
     }
@@ -1174,12 +1182,33 @@ private:
         ConnectAfterRotation(parent_ptr, left_child_ptr, left_node);
         ConnectAfterRotation(left_child_ptr, node_ptr, false);
         ConnectAfterRotation(left_child_ptr, left_subtree_ptr, true);
-        ConnectAfterRotation(node_ptr, middle_subtree, true);
-        ConnectAfterRotation(node_ptr, right_subtree, false);
+        ConnectAfterRotation(node_ptr, middle_subtree_ptr, true);
+        ConnectAfterRotation(node_ptr, right_subtree_ptr, false);
         FixSizeHeightAfterRotate(node_ptr);
         FixSizeHeightAfterRotate(left_child_ptr);
     }
 
+public:
+    // maybe written
+    void RotateLeftRight(std::unique_ptr<SetNode<K>>& node) {
+        assert(node != nullptr);
+        assert(node->GetLeft() != nullptr);
+        assert(node->GetLeft()->GetRight() != nullptr);
+        RotateLeft(node->GetLeft());
+        RotateRight(node);
+    }
+
+    // maybe written
+    void RotateRightLeft(std::unique_ptr<SetNode<K>>& node) {
+        assert(node != nullptr);
+        assert(node->GetRight() != nullptr);
+        assert(node->GetRight()->GetLeft() != nullptr);
+
+        RotateRight(node->GetRight());
+        RotateLeft(node);
+    }
+
+private:
     CompressedPair<std::unique_ptr<SetNode<K>>, Compare> root_compare_;
     SetEndNode<K> rend_node_{nullptr, std::addressof(end_node_)};
     SetEndNode<K> end_node_{std::addressof(rend_node_), nullptr};

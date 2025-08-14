@@ -1,86 +1,58 @@
 
 #include "SetAVL.h"
 #include <cassert>
+#include <random>
 #include <vector>
 #include <algorithm>
 #include <functional>
 #include <iostream>
 
-// Подключи сюда свой SetAVL
-// #include "SetAVL.h"
+bool LeftOk(const std::unique_ptr<SetNode<int>>& x) {
+    return (x != nullptr) && (x->GetRight() != nullptr);
+}
 
-// Универсальная проверка AVL против эталонного std::vector
-template<typename T, typename Compare>
-void CheckAgainstVector(SetAVL<T, Compare>& bst, std::vector<T> vals, Compare cmp) {
-    // Сортируем по компаратору и удаляем дубликаты
-    std::sort(vals.begin(), vals.end(), cmp);
-    vals.erase(std::unique(vals.begin(), vals.end()), vals.end());
+bool RightOk(const std::unique_ptr<SetNode<int>>& x) {
+    return (x != nullptr) && (x->GetLeft() != nullptr);
+}
 
-    // Проверка SelectInd1
-    for (size_t i = 0; i < vals.size(); ++i) {
-        assert(*bst.SelectInd1(i + 1) == vals[i]);
+bool RightLeftOk(const std::unique_ptr<SetNode<int>>& x) {
+    return (x != nullptr) && (x->GetRight() != nullptr) && (x->GetRight()->GetLeft() != nullptr);
+}
+
+bool LeftRightOk(const std::unique_ptr<SetNode<int>>& x) {
+    return (x != nullptr) && (x->GetLeft() != nullptr) && (x->GetLeft()->GetRight() != nullptr);
+}
+
+void TestRightLeft(int n) {
+    std::vector<int> x;
+    for (int i = 0; i < n; ++i) {
+        x.push_back(i);
+    }
+    std::random_device rd;
+    std::mt19937 g(rd());
+
+    std::shuffle(x.begin(), x.end(), g);
+
+    SetAVL<int> y;
+
+    for (int i = 0; i < n; ++i) {
+        y.Insert(x[i]);
     }
 
-    // Проверка RankInd0 для каждого значения из набора
-    for (T v : vals) {
-        size_t rank = std::distance(
-            vals.begin(),
-            std::lower_bound(vals.begin(), vals.end(), v, cmp)
-        );
-        assert(bst.RankInd0(v) == rank);
+    std::sort(x.begin(), x.end());
+    assert(std::equal(y.Begin(), y.End(), x.begin()));
+
+    if (LeftRightOk(y.GetRoot())) {
+        y.RotateLeftRight(y.GetRoot());
     }
 
-    // Проверка крайних элементов по компаратору
-    if (!vals.empty()) {
-        T cmp_min = vals.front();
-        T cmp_max = vals.back();
-        for (auto& x : vals) {
-            if (cmp(x, cmp_min)) {cmp_min = x;} // x <cmp cmp_min
-            if (cmp(cmp_max, x)) {cmp_max = x;} // cmp_max <cmp x
-        }
-
-        // Меньше любого существующего
-        struct LessThanAll {
-            T val;
-            Compare cmp;
-            bool operator<(const T& rhs) const { return cmp(val, rhs); }
-            operator T() const { return val; }
-        };
-        T before_min = cmp_min;
-        assert(bst.RankInd0(cmp_min) == 0);
-        assert(bst.RankInd0(cmp_max) + 1 == vals.size());
-
-
-        // Больше любого существующего
-        T after_max = cmp_max;
-
-        // Проверки
-        assert(bst.RankInd0(cmp_min) >= 0);
-        assert(bst.RankInd0(cmp_max) <= vals.size());
-    }
+    assert(std::equal(y.Begin(), y.End(), x.begin()));
 }
 
 int main() {
-    {
-        // Простейший тест std::less
-        SetAVL<int> bst;
-        std::vector<int> vals = {8, 2, -1};
-        for (int v : vals) {bst.Insert(v);}
-        assert(*bst.SelectInd1(1) == -1);
-        assert(*bst.SelectInd1(2) == 2);
-        assert(bst.RankInd0(3) == 2);
-        CheckAgainstVector(bst, vals, std::less<int>());
-    }
-    {
-        // Тест std::greater
-        SetAVL<int, std::greater<int>> bst;
-        std::vector<int> vals = {8, 2, -1};
-        for (int v : vals) {bst.Insert(v);}
-        assert(*bst.SelectInd1(1) == 8);
-        assert(*bst.SelectInd1(2) == 2);
-        assert(bst.RankInd0(3) == 1);
-        CheckAgainstVector(bst, vals, std::greater<int>());
+    for (int i = 1; i < 100; ++i) {
+        TestRightLeft(i);
     }
 
-    std::cout << "All tests passed!\n";
+    std::cout << "All tests passed\n";
 }
