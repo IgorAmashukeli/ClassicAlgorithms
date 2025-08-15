@@ -42,8 +42,8 @@ struct SetBaseNode {
     virtual SetBaseNode<K>*& GetNext() noexcept = 0;
     virtual size_t GetSize() const = 0;
     virtual size_t& GetSize() = 0;
-    virtual ssize_t GetHeight() const = 0;
-    virtual ssize_t& GetHeight() = 0;
+    virtual signed char GetBalance() const = 0;
+    virtual signed char& GetHeight() = 0;
     virtual bool IsSetEndNode() const noexcept = 0;
 };
 
@@ -56,7 +56,7 @@ struct SetNode : public SetBaseNode<K> {
     SetBaseNode<K>* prev_ = nullptr;
     SetBaseNode<K>* next_ = nullptr;
     size_t size_ = 1;
-    ssize_t height_ = 0;
+    signed char balance_ = 0;
 
     SetNode() = default;
     SetNode(const SetNode& other) = delete;
@@ -65,15 +65,16 @@ struct SetNode : public SetBaseNode<K> {
     SetNode& operator=(SetNode&& other) = delete;
     ~SetNode() = default;
 
-    SetNode(const K& key, SetBaseNode<K>* prev, SetBaseNode<K>* next, size_t size, ssize_t height)
-        : key_(key), prev_(prev), next_(next), size_(size), height_(height) {
+    SetNode(const K& key, SetBaseNode<K>* prev, SetBaseNode<K>* next, size_t size,
+            signed char balance)
+        : key_(key), prev_(prev), next_(next), size_(size), balance_(balance) {
     }
-    SetNode(K&& key, SetBaseNode<K>* prev, SetBaseNode<K>* next, size_t size, ssize_t height)
-        : key_(std::move(key)), prev_(prev), next_(next), size_(size), height_(height) {
+    SetNode(K&& key, SetBaseNode<K>* prev, SetBaseNode<K>* next, size_t size, signed char balance)
+        : key_(std::move(key)), prev_(prev), next_(next), size_(size), balance_(balance_) {
     }
     template <typename P>
-    SetNode(P&& key, SetBaseNode<K>* prev, SetBaseNode<K>* next, size_t size, ssize_t height)
-        : key_(std::forward<P>(key)), prev_(prev), next_(next), size_(size), height_(height) {
+    SetNode(P&& key, SetBaseNode<K>* prev, SetBaseNode<K>* next, size_t size, signed char balance)
+        : key_(std::forward<P>(key)), prev_(prev), next_(next), size_(size), balance_(balance) {
     }
     const K& GetKey() const noexcept {
         return key_;
@@ -114,11 +115,11 @@ struct SetNode : public SetBaseNode<K> {
     size_t& GetSize() noexcept {
         return size_;
     }
-    ssize_t GetHeight() const {
-        return height_;
+    signed char GetBalance() const {
+        return balance_;
     }
-    ssize_t& GetHeight() {
-        return height_;
+    signed char& GetBalance() {
+        return balance_;
     }
     bool IsSetEndNode() const noexcept {
         return false;
@@ -178,10 +179,10 @@ struct SetEndNode : public SetBaseNode<K> {
     size_t& GetSize() {
         throw std::out_of_range("Out of range!");
     }
-    ssize_t GetHeight() const {
+    signed char GetBalance() const {
         throw std::out_of_range("Out of range!");
     }
-    ssize_t& GetHeight() {
+    signed char& GetBalance() {
         throw std::out_of_range("Out of range!");
     }
     bool IsSetEndNode() const noexcept {
@@ -486,17 +487,35 @@ public:
         ConnectSetEndNodesAfterSwap(other);
     }
     std::pair<Iterator, bool> Insert(const SetType& key) {
-        return InsertSetNode(key);
+        auto pair = InsertSetNode(key);
+        auto node = pair.first;
+        auto inserted = pair.second;
+        if (!inserted) {
+            return {Iterator(node), false};
+        }
+        BalanceAfterInsert(node);
+        return {Iterator(node), true};
     }
     std::pair<Iterator, bool> Insert(SetType&& key) {
-        return InsertSetNode(std::move(key));
+        auto pair = InsertSetNode(std::move(key));
+        auto node = pair.first;
+        auto inserted = pair.second;
+        if (!inserted) {
+            return {Iterator(node), false};
+        }
+        BalanceAfterInsert(node);
+        return {Iterator(node), true};
     }
     template <typename P>
     std::pair<Iterator, bool> Insert(P&& key) {
-        return InsertSetNode(std::forward<P>(key));
-    }
-    // balancing after insert -> not written yet
-    void BalanceAfterInsert() {
+        auto pair = InsertSetNode(std::forward<P>(key));
+        auto node = pair.first;
+        auto inserted = pair.second;
+        if (!inserted) {
+            return {Iterator(node), false};
+        }
+        BalanceAfterInsert(node);
+        return {Iterator(node), true};
     }
     template <typename InputIt>
     void Insert(InputIt first, InputIt last) {
@@ -668,26 +687,53 @@ public:
     SetNode<K>* GetRootPtr() const {
         return GetRoot().get();
     }
-    size_t GetNodeSize(SetNode<K>* node) {
+
+private:
+    size_t GetNodeSize(SetNode<K>* node) const {
         if (node == nullptr) {
             return 0;
         }
         return node->GetSize();
     }
-    ssize_t GetNodeHeight(SetNode<K>* node) {
-        if (node == nullptr) {
-            return -1;
-        }
-        return node->GetHeight();
-    }
-    ssize_t GetNodeBalance(SetBaseNode<K>* node) {
+    ssize_t GetNodeBalance(SetNode<K>* node) const {
         if (node == nullptr) {
             return 0;
         }
-        return GetNodeHeight(node->GetLeft().get()) - GetNodeHeight(node->GetRight().get());
+        return node->GetBalance();
+    }
+    bool IsBalanceNormal(SetNode<K>* node) const {
+        return std::abs(GetNodeBalance(node)) <= 2;
     }
 
-private:
+    bool LeftRotateNeeded(SetNode<K>* node) {
+        if (node == nullptr || node->GetRight() == nullptr) {
+            return false;
+        }
+        return (RightSuperHeavy(node)) &&
+               (RightLightHeavy(node->GetRight()) || (PerfectBalance(node->GetRight())));
+    }
+    bool RightRotateNeded(SetNode<K>* node) {
+        if (node == nullptr || node->GetLeft() == nullptr) {
+            return false;
+        }
+        return (LeftSuperHeavy(node)) &&
+               ((LeftLightHeavy(node->GetLeft())) || (PerfectBalance(node->GetLeft())));
+    }
+    bool RightLeftRotateNeeded(SetNode<K>* node) {
+        if (node == nullptr || node->GetRight() == nullptr ||
+            node->GetRight()->GetLeft() == nullptr) {
+            return false;
+        }
+        return (RightSuperHeavy(node)) && LeftLightHeavy(node->GetRight());
+    }
+    bool LeftRightRotateNeeded(SetNode<K>* node) {
+        if (node == nullptr || node->GetLeft() == nullptr ||
+            node->GetLeft()->GetRight() == nullptr) {
+            return false;
+        }
+        return (LeftSuperHeavy(node) && RightLightHeavy(node->GetLeft()));
+    }
+
     SetNode<K>* FindSetNode(const K& key) const {
         SetNode<K>* node = GetRootPtr();
 
@@ -794,7 +840,7 @@ private:
                                              SetBaseNode<K>*& prev_node) {
         auto node =
             std::make_unique<SetNode<K>>(top_other_node->GetKey(), nullptr, nullptr,
-                                         top_other_node->GetSize(), top_other_node->GetHeight());
+                                         top_other_node->GetSize(), top_other_node->GetBalance());
         node->GetPrev() = prev_node;
         prev_node->GetNext() = node.get();
         prev_node = node.get();
@@ -922,7 +968,7 @@ private:
         }
     }
 
-    std::pair<Iterator, bool> InsertSetNode(const SetType& key) {
+    std::pair<SetNode<K>, bool> InsertSetNode(const SetType& key) {
         SetNode<K>* node = GetRootPtr();
         SetNode<K>* parent = nullptr;
         bool left = false;
@@ -934,24 +980,24 @@ private:
                 GetRoot() = std::make_unique<SetNode<K>>(key, std::addressof(rend_node_),
                                                          std::addressof(end_node_), 1, 0);
                 ConnectPrevNext(GetRootPtr(), current_prev, current_next);
-                return {Iterator(GetRootPtr()), true};
+                return {GetRootPtr(), true};
             }
             if ((node == nullptr) && (parent != nullptr) && left) {
                 parent->GetLeft() = std::make_unique<SetNode<K>>(key, nullptr, nullptr, 1, 0);
                 parent->GetLeft()->GetParent() = parent;
                 ConnectPrevNext(parent->GetLeft().get(), current_prev, current_next);
                 IncreaseSizeInBranch(parent);
-                return {Iterator(parent->GetLeft().get()), true};
+                return {parent->GetLeft().get(), true};
             }
             if ((node == nullptr) && (parent != nullptr) && !left) {
                 parent->GetRight() = std::make_unique<SetNode<K>>(key, nullptr, nullptr, 1, 0);
                 parent->GetRight()->GetParent() = parent;
                 ConnectPrevNext(parent->GetRight().get(), current_prev, current_next);
                 IncreaseSizeInBranch(parent);
-                return {Iterator(parent->GetRight().get()), true};
+                return {parent->GetRight().get(), true};
             }
             if ((node != nullptr) && Equivalent(node->GetKey(), key, KeyCompare())) {
-                return {Iterator(node), false};
+                return {node, false};
             }
             if ((node != nullptr) && (KeyCompare()(key, node->GetKey()))) {
                 left = true;
@@ -966,7 +1012,7 @@ private:
             }
         }
     }
-    std::pair<Iterator, bool> InsertSetNode(SetType&& key) {
+    std::pair<SetNode<K>, bool> InsertSetNode(SetType&& key) {
         SetNode<K>* node = GetRootPtr();
         SetNode<K>* parent = nullptr;
         bool left = false;
@@ -978,7 +1024,7 @@ private:
                 GetRoot() = std::make_unique<SetNode<K>>(std::move(key), std::addressof(rend_node_),
                                                          std::addressof(end_node_), 1, 0);
                 ConnectPrevNext(GetRootPtr(), current_prev, current_next);
-                return {Iterator(GetRootPtr()), true};
+                return {GetRootPtr(), true};
             }
             if ((node == nullptr) && (parent != nullptr) && left) {
                 parent->GetLeft() =
@@ -986,7 +1032,7 @@ private:
                 parent->GetLeft()->GetParent() = parent;
                 ConnectPrevNext(parent->GetLeft().get(), current_prev, current_next);
                 IncreaseSizeInBranch(parent);
-                return {Iterator(parent->GetLeft().get()), true};
+                return {parent->GetLeft().get(), true};
             }
             if ((node == nullptr) && (parent != nullptr) && !left) {
                 parent->GetRight() =
@@ -994,10 +1040,10 @@ private:
                 parent->GetRight()->GetParent() = parent;
                 ConnectPrevNext(parent->GetRight().get(), current_prev, current_next);
                 IncreaseSizeInBranch(parent);
-                return {Iterator(parent->GetRight().get()), true};
+                return {parent->GetRight().get(), true};
             }
             if ((node != nullptr) && Equivalent(node->GetKey(), key, KeyCompare())) {
-                return {Iterator(node), false};
+                return {node, false};
             }
             if ((node != nullptr) && (KeyCompare()(key, node->GetKey()))) {
                 left = true;
@@ -1013,7 +1059,7 @@ private:
         }
     }
     template <typename P>
-    std::pair<Iterator, bool> InsertSetNode(P&& key) {
+    std::pair<SetNode<K>, bool> InsertSetNode(P&& key) {
         SetNode<K>* node = GetRootPtr();
         SetNode<K>* parent = nullptr;
         bool left = false;
@@ -1026,7 +1072,7 @@ private:
                     std::make_unique<SetNode<K>>(std::forward<P>(key), std::addressof(rend_node_),
                                                  std::addressof(end_node_), 1, 0);
                 ConnectPrevNext(GetRootPtr(), current_prev, current_next);
-                return {Iterator(GetRootPtr()), true};
+                return {GetRootPtr(), true};
             }
             if ((node == nullptr) && (parent != nullptr) && left) {
                 parent->GetLeft() =
@@ -1034,7 +1080,7 @@ private:
                 parent->GetLeft()->GetParent() = parent;
                 ConnectPrevNext(parent->GetLeft().get(), current_prev, current_next);
                 IncreaseSizeInBranch(parent);
-                return {Iterator(parent->GetLeft().get()), true};
+                return {parent->GetLeft().get(), true};
             }
             if ((node == nullptr) && (parent != nullptr) && !left) {
                 parent->GetRight() =
@@ -1042,10 +1088,10 @@ private:
                 parent->GetRight()->GetParent() = parent;
                 ConnectPrevNext(parent->GetRight().get(), current_prev, current_next);
                 IncreaseSizeInBranch(parent);
-                return {Iterator(parent->GetRight().get()), true};
+                return {parent->GetRight().get(), true};
             }
             if ((node != nullptr) && Equivalent(node->GetKey(), key, KeyCompare())) {
-                return {Iterator(node), false};
+                return {node, false};
             }
             if ((node != nullptr) && (KeyCompare()(key, node->GetKey()))) {
                 left = true;
@@ -1123,17 +1169,92 @@ private:
         }
     }
 
-    void FixSizeHeightAfterRotate(SetNode<K>* node) {
-        node->GetHeight() =
-            std::max(GetNodeHeight(node->GetLeft().get()), GetNodeHeight(node->GetRight().get())) +
-            1;
+    void FixLeftBalance(SetNode<K>* left_child, SetNode<K>* node) {
+        assert(left_child != nullptr);
+        assert(node != nullptr);
+        if ((GetNodeBalance(left_child) == -2) && (GetNodeBalance(node) == -1)) {
+            left_child->GetBalance() = 0;
+            node->GetBalance() = 0;
+        } else if ((GetNodeBalance(left_child) == -2) && (GetNodeBalance(node) == 0)) {
+            left_child->GetBalance() = -1;
+            node->GetBalance() = 1;
+        } else {
+            assert(false);
+        }
+    }
+    void FixRightBalance(SetNode<K>* right_child, SetNode<K>* node) {
+        assert(right_child != nullptr);
+        assert(node != nullptr);
+        if ((GetNodeBalance(right_child) == 2) && (GetNodeBalance(node) == 1)) {
+            right_child->GetBalance() = 0;
+            node->GetBalance() = 0;
+        } else if ((GetNodeBalance(right_child) == 2) && (GetNodeBalance(node) == 0)) {
+            right_child->GetBalance = 1;
+            node->GetBalance() - 1;
+        } else {
+            assert(false);
+        }
+    }
+    void FixRightLeftBalance(SetNode<K>* left_child, SetNode<K>* right_child, SetNode<K>* node) {
+        assert(left_child != nullptr);
+        assert(right_child != nullptr);
+        assert(node != nullptr);
+
+        if ((GetNodeBalance(left_child) == -2) && (GetNodeBalance(right_child) == 1) &&
+            (GetNodeBalance(node) == 1)) {
+            left_child->GetBalance() = 0;
+            right_child->GetBalance() = -1;
+            node->GetBalance() = 0;
+
+        } else if ((GetNodeBalance(left_child) == -2) && (GetNodeBalance(right_child) == 1) &&
+                   (GetNodeBalance(node) == -1)) {
+            left_child->GetBalance() = 1;
+            right_child->GetBalance() = 0;
+            node->GetBalance() = 0;
+
+        } else if ((GetNodeBalance(left_child) == -2) && (GetNodeBalance(right_child) == 1) &&
+                   (GetNodeBalance(node) == 0)) {
+            left_child->GetBalance() = 0;
+            right_child->GetBalance() = 0;
+            node->GetBalance() = 0;
+
+        } else {
+            assert(false);
+        }
+    }
+    void FixLeftRightBalance(SetNode<K>* right_child, SetNode<K>* left_child, SetNode<K>* node) {
+        assert(right_child != nullptr);
+        assert(left_child != nullptr);
+        assert(node != nullptr);
+
+        if ((GetNodeBalance(right_child) == 2) && (GetNodeBalance(left_child) == -1) &&
+            (GetNodeBalance(node) == -1)) {
+            right_child->GetBalance() = 0;
+            left_child->GetBalance() = 1;
+            node->GetBalance() = 0;
+
+        } else if ((GetNodeBalance(right_child) == 2) && (GetNodeBalance(left_child) == -1) &&
+                   (GetNodeBalance(node) == 1)) {
+            right_child->GetBalance() = -1;
+            left_child->GetBalance() = 0;
+            node->GetBalance() = 0;
+
+        } else if ((GetNodeBalance(right_child) == 2) && (GetNodeBalance(left_child) == -1) &&
+                   (GetNodeBalance(node) == 0)) {
+            right_child->GetBalance() = 0;
+            left_child->GetBalance() = 0;
+            node->GetBalance() = 0;
+
+        } else {
+            assert(false);
+        }
+    }
+    void FixSize(SetNode<K>* node) {
         node->GetSize() =
             GetNodeSize(node->GetLeft().get()) + GetNodeSize(node->GetRight().get()) + 1;
     }
 
-    // may be written
-    void RotateLeft(std::unique_ptr<SetNode<K>>& node) {
-
+    std::pair<SetNode<K>*, SetNode<K>*> DoLeftRotate(std::unique_ptr<SetNode<K>>& node) {
         assert(node != nullptr);
         assert(node->GetRight() != nullptr);
 
@@ -1155,14 +1276,23 @@ private:
         ConnectAfterRotation(node_ptr, left_subtree_ptr, true);
         ConnectAfterRotation(node_ptr, middle_subtree_ptr, false);
         ConnectAfterRotation(right_child_ptr, right_subtree_ptr, false);
-
-        FixSizeHeightAfterRotate(node_ptr);
-        FixSizeHeightAfterRotate(right_child_ptr);
+        return {node_ptr, right_child_ptr};
     }
 
-    // maybe written
-    void RotateRight(std::unique_ptr<SetNode<K>>& node) {
+    // may be written
+    SetNode<K>* RotateLeft(std::unique_ptr<SetNode<K>>& node) {
 
+        auto pair = DoLeftRotate(node);
+        auto left_child_ptr = pair.first;
+        auto node_ptr = pair.second;
+
+        FixSize(left_child_ptr);
+        FixSize(node_ptr);
+        FixLeftBalance(left_child_ptr, node_ptr);
+        return node_ptr;
+    }
+
+    std::pair<SetNode<K>*, SetNode<K>*> DoRightRotate(std::unique_ptr<SetNode<K>>& node) {
         assert(node != nullptr);
         assert(node->GetLeft() != nullptr);
 
@@ -1184,31 +1314,109 @@ private:
         ConnectAfterRotation(left_child_ptr, left_subtree_ptr, true);
         ConnectAfterRotation(node_ptr, middle_subtree_ptr, true);
         ConnectAfterRotation(node_ptr, right_subtree_ptr, false);
-        FixSizeHeightAfterRotate(node_ptr);
-        FixSizeHeightAfterRotate(left_child_ptr);
-    }
 
-public:
-    // maybe written
-    void RotateLeftRight(std::unique_ptr<SetNode<K>>& node) {
-        assert(node != nullptr);
-        assert(node->GetLeft() != nullptr);
-        assert(node->GetLeft()->GetRight() != nullptr);
-        RotateLeft(node->GetLeft());
-        RotateRight(node);
+        return {node_ptr, left_child_ptr};
     }
 
     // maybe written
-    void RotateRightLeft(std::unique_ptr<SetNode<K>>& node) {
+    SetNode<K>* RotateRight(std::unique_ptr<SetNode<K>>& node) {
+        auto pair = DoRightRotate(node);
+        auto right_child_ptr = pair.first;
+        auto node_ptr = pair.second;
+
+        FixSize(right_child_ptr);
+        FixSize(node_ptr);
+        FixRightBalance(right_child_ptr, node);
+        return node_ptr;
+    }
+
+    SetNode<K>* RotateRightLeft(std::unique_ptr<SetNode<K>>& node) {
         assert(node != nullptr);
         assert(node->GetRight() != nullptr);
         assert(node->GetRight()->GetLeft() != nullptr);
 
-        RotateRight(node->GetRight());
-        RotateLeft(node);
+        auto pair = DoRightRotate(node->GetRight());
+        auto right_child_ptr = pair.first;
+        auto node_ptr = pair.second;
+
+        auto pair2 = DoLeftRotate(node);
+        auto left_child_ptr = pair2.first;
+        assert(node_ptr == pair2.second);
+
+        FixRightLeftBalance(left_child_ptr, right_child_ptr, node_ptr);
+        return node_ptr;
     }
 
-private:
+    SetNode<K>* RotateLeftRight(std::unique_ptr<SetNode<K>>& node) {
+        assert(node != nullptr);
+        assert(node->GetLeft() != nullptr);
+        assert(node->GetLeft()->GetRight() != nullptr);
+        auto pair = DoRightRotate(node->GetLeft());
+        auto left_child_ptr = pair.first;
+        auto node_ptr = pair.second;
+
+        auto pair2 = DoLeftRotate(node);
+        auto right_child_ptr = pair.first;
+        assert(node_ptr == pair2.second);
+
+        FixLeftRightBalance(right_child_ptr, left_child_ptr, node_ptr);
+        return node_ptr;
+    }
+
+    std::unique_ptr<SetNode<K>>& GetNodeUn(SetNode<K>* node) {
+        if (node->GetParent() == nullptr) {
+            return GetRoot();
+        } else if (node->GetParent()->GetLeft().get() == node) {
+            return node->GetParent()->GetLeft();
+        } else {
+            assert(node->GetParent()->GetRight().get() == node);
+            return node->GetParent()->GetRight();
+        }
+    }
+
+    // maybe finished
+    void BalanceAfterInsert(SetNode<K>* inserted_node) {
+        SetNode<K>* current_node = inserted_node->GetParent();
+        SetNode<K>* previous_node = inserted_node;
+        while (current_node != nullptr) {
+            if (current_node->GetLeft().get() == previous_node) {
+                ++(current_node->GetBalance());
+            } else {
+                assert(current_node->GetRight().get() == previous_node);
+                --(current_node->GetBalance());
+            }
+            assert(IsBalanceNormal(current_node));
+            if (current_node->GetBalance() == 0) {
+                return;
+            }
+            if (std::abs(current_node->GetBalance()) == 1) {
+                previous_node = current_node;
+                current_node = current_node->GetParent();
+            } else {
+                assert(std::abs(current_node->GetBalance()) == 2);
+                std::unique_ptr<SetNode<K>>& current_node_smart = GetNodeUn(current_node);
+                if (LeftRotateNeeded(current_node)) {
+                    current_node = RotateLeft(current_node_smart);
+                } else if (RightRotateNeded(current_node)) {
+                    current_node = RotateRight(current_node_smart);
+                } else if (RightLeftRotateNeeded(current_node)) {
+                    current_node = RotateRightLeft(current_node_smart);
+                } else if (LeftRightRotateNeeded(current_node)) {
+                    current_node = RotateLeftRight(current_node_smart);
+                } else {
+                    assert(false);
+                }
+                if (current_node->GetBalance() == 0) {
+                    return;
+                } else {
+                    assert(std::abs(current_node->GetBalance()) == 1);
+                    previous_node = current_node;
+                    current_node = current_node->GetParent();
+                }
+            }
+        }
+    }
+
     CompressedPair<std::unique_ptr<SetNode<K>>, Compare> root_compare_;
     SetEndNode<K> rend_node_{nullptr, std::addressof(end_node_)};
     SetEndNode<K> end_node_{std::addressof(rend_node_), nullptr};
