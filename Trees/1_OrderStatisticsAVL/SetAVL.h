@@ -43,7 +43,7 @@ struct SetBaseNode {
     virtual size_t GetSize() const = 0;
     virtual size_t& GetSize() = 0;
     virtual signed char GetBalance() const = 0;
-    virtual signed char& GetHeight() = 0;
+    virtual signed char& GetBalance() = 0;
     virtual bool IsSetEndNode() const noexcept = 0;
 };
 
@@ -70,7 +70,7 @@ struct SetNode : public SetBaseNode<K> {
         : key_(key), prev_(prev), next_(next), size_(size), balance_(balance) {
     }
     SetNode(K&& key, SetBaseNode<K>* prev, SetBaseNode<K>* next, size_t size, signed char balance)
-        : key_(std::move(key)), prev_(prev), next_(next), size_(size), balance_(balance_) {
+        : key_(std::move(key)), prev_(prev), next_(next), size_(size), balance_(balance) {
     }
     template <typename P>
     SetNode(P&& key, SetBaseNode<K>* prev, SetBaseNode<K>* next, size_t size, signed char balance)
@@ -695,7 +695,7 @@ private:
         }
         return node->GetSize();
     }
-    ssize_t GetNodeBalance(SetNode<K>* node) const {
+    signed char GetNodeBalance(SetNode<K>* node) const {
         if (node == nullptr) {
             return 0;
         }
@@ -709,29 +709,29 @@ private:
         if (node == nullptr || node->GetRight() == nullptr) {
             return false;
         }
-        return (RightSuperHeavy(node)) &&
-               (RightLightHeavy(node->GetRight()) || (PerfectBalance(node->GetRight())));
+        return (GetNodeBalance(node) == -2) && (GetNodeBalance(node->GetRight().get()) == -1) ||
+               (GetNodeBalance(node->GetRight().get()) == 0);
     }
     bool RightRotateNeded(SetNode<K>* node) {
         if (node == nullptr || node->GetLeft() == nullptr) {
             return false;
         }
-        return (LeftSuperHeavy(node)) &&
-               ((LeftLightHeavy(node->GetLeft())) || (PerfectBalance(node->GetLeft())));
+        return (GetNodeBalance(node) == 2) && ((GetNodeBalance(node->GetLeft().get()) == 1) ||
+                                               (GetNodeBalance(node->GetLeft().get()) == 0));
     }
     bool RightLeftRotateNeeded(SetNode<K>* node) {
         if (node == nullptr || node->GetRight() == nullptr ||
             node->GetRight()->GetLeft() == nullptr) {
             return false;
         }
-        return (RightSuperHeavy(node)) && LeftLightHeavy(node->GetRight());
+        return (GetNodeBalance(node) == -2) && (GetNodeBalance(node->GetRight().get()) == 1);
     }
     bool LeftRightRotateNeeded(SetNode<K>* node) {
         if (node == nullptr || node->GetLeft() == nullptr ||
             node->GetLeft()->GetRight() == nullptr) {
             return false;
         }
-        return (LeftSuperHeavy(node) && RightLightHeavy(node->GetLeft()));
+        return (GetNodeBalance(node) == 2) && (GetNodeBalance(node->GetLeft().get()) == -1);
     }
 
     SetNode<K>* FindSetNode(const K& key) const {
@@ -968,7 +968,7 @@ private:
         }
     }
 
-    std::pair<SetNode<K>, bool> InsertSetNode(const SetType& key) {
+    std::pair<SetNode<K>*, bool> InsertSetNode(const SetType& key) {
         SetNode<K>* node = GetRootPtr();
         SetNode<K>* parent = nullptr;
         bool left = false;
@@ -1012,7 +1012,7 @@ private:
             }
         }
     }
-    std::pair<SetNode<K>, bool> InsertSetNode(SetType&& key) {
+    std::pair<SetNode<K>*, bool> InsertSetNode(SetType&& key) {
         SetNode<K>* node = GetRootPtr();
         SetNode<K>* parent = nullptr;
         bool left = false;
@@ -1059,7 +1059,7 @@ private:
         }
     }
     template <typename P>
-    std::pair<SetNode<K>, bool> InsertSetNode(P&& key) {
+    std::pair<SetNode<K>*, bool> InsertSetNode(P&& key) {
         SetNode<K>* node = GetRootPtr();
         SetNode<K>* parent = nullptr;
         bool left = false;
@@ -1189,8 +1189,8 @@ private:
             right_child->GetBalance() = 0;
             node->GetBalance() = 0;
         } else if ((GetNodeBalance(right_child) == 2) && (GetNodeBalance(node) == 0)) {
-            right_child->GetBalance = 1;
-            node->GetBalance() - 1;
+            right_child->GetBalance() = 1;
+            node->GetBalance() = -1;
         } else {
             assert(false);
         }
@@ -1276,6 +1276,10 @@ private:
         ConnectAfterRotation(node_ptr, left_subtree_ptr, true);
         ConnectAfterRotation(node_ptr, middle_subtree_ptr, false);
         ConnectAfterRotation(right_child_ptr, right_subtree_ptr, false);
+
+        FixSize(node_ptr);
+        FixSize(right_child_ptr);
+
         return {node_ptr, right_child_ptr};
     }
 
@@ -1286,8 +1290,6 @@ private:
         auto left_child_ptr = pair.first;
         auto node_ptr = pair.second;
 
-        FixSize(left_child_ptr);
-        FixSize(node_ptr);
         FixLeftBalance(left_child_ptr, node_ptr);
         return node_ptr;
     }
@@ -1315,6 +1317,9 @@ private:
         ConnectAfterRotation(node_ptr, middle_subtree_ptr, true);
         ConnectAfterRotation(node_ptr, right_subtree_ptr, false);
 
+        FixSize(node_ptr);
+        FixSize(left_child_ptr);
+
         return {node_ptr, left_child_ptr};
     }
 
@@ -1324,9 +1329,7 @@ private:
         auto right_child_ptr = pair.first;
         auto node_ptr = pair.second;
 
-        FixSize(right_child_ptr);
-        FixSize(node_ptr);
-        FixRightBalance(right_child_ptr, node);
+        FixRightBalance(right_child_ptr, node_ptr);
         return node_ptr;
     }
 
@@ -1334,6 +1337,9 @@ private:
         assert(node != nullptr);
         assert(node->GetRight() != nullptr);
         assert(node->GetRight()->GetLeft() != nullptr);
+
+        assert(node->GetBalance() == -2);
+        assert(node->GetRight()->GetBalance() == 1);
 
         auto pair = DoRightRotate(node->GetRight());
         auto right_child_ptr = pair.first;
@@ -1351,12 +1357,16 @@ private:
         assert(node != nullptr);
         assert(node->GetLeft() != nullptr);
         assert(node->GetLeft()->GetRight() != nullptr);
-        auto pair = DoRightRotate(node->GetLeft());
+
+        assert(node->GetBalance() == 2);
+        assert(node->GetLeft()->GetBalance() == -1);
+
+        auto pair = DoLeftRotate(node->GetLeft());
         auto left_child_ptr = pair.first;
         auto node_ptr = pair.second;
 
-        auto pair2 = DoLeftRotate(node);
-        auto right_child_ptr = pair.first;
+        auto pair2 = DoRightRotate(node);
+        auto right_child_ptr = pair2.first;
         assert(node_ptr == pair2.second);
 
         FixLeftRightBalance(right_child_ptr, left_child_ptr, node_ptr);
@@ -1431,7 +1441,7 @@ bool operator==(const SetAVL<K, Compare>& lhs, const SetAVL<K, Compare>& rhs) {
     Compare compare = lhs.KeyCompare();
 
     for (auto it = lhs.Begin(), jt = rhs.Begin(); it != lhs.End(); ++it, ++jt) {
-        if (!Equivalent(it->first, jt->first, compare) || (it->second != jt->second)) {
+        if (!Equivalent(*it, *jt, compare)) {
             return false;
         }
     }
