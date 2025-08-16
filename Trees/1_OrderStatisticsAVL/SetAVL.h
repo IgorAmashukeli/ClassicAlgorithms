@@ -1456,7 +1456,7 @@ void Swap(const SetAVL<K, Compare>& lhs, const SetAVL<K, Compare>& rhs) {
     lhs.Swap(rhs);
 }
 
-template <typename K, typename V, typename Compare>
+template <typename K, typename Compare>
 bool operator!=(const SetAVL<K, Compare>& lhs, const SetAVL<K, Compare>& rhs) {
     return (lhs != rhs);
 }

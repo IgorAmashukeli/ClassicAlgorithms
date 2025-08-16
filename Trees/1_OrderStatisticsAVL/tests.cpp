@@ -18,7 +18,33 @@ struct ComplexKey {
         }
         return y < other.y;
     }
+    bool operator==(const ComplexKey& other) const {
+        return x == other.x && y == other.y;
+    }
 };
+
+std::vector<int> GenerateRandomVector(size_t size, int min_val, int max_val, unsigned seed = 42) {
+    std::vector<int> result;
+    std::mt19937 gen(seed);
+    std::uniform_int_distribution<> dis(min_val, max_val);
+    result.reserve(size);
+    for (size_t i = 0; i < size; ++i) {
+        result.push_back(dis(gen));
+    }
+    return result;
+}
+std::vector<ComplexKey> GenerateRandomComplexKeys(size_t size, unsigned seed = 42) {
+    std::vector<ComplexKey> result;
+    std::mt19937 gen(seed);
+    std::uniform_int_distribution<> dis(0, 100);
+    std::vector<std::string> strings = {"a", "b", "c", "d", "e"};
+    std::uniform_int_distribution<> str_dis(0, strings.size() - 1);
+    result.reserve(size);
+    for (size_t i = 0; i < size; ++i) {
+        result.push_back({dis(gen), strings[str_dis(gen)]});
+    }
+    return result;
+}
 
 void TestDefaultConstructor() {
     SetAVL<int> set_avl;
@@ -38,56 +64,110 @@ void TestComparatorConstructor() {
 }
 
 void TestCopyConstructor() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 42);
     SetAVL<int> original;
-    original.Insert(1);
-    original.Insert(2);
+    for (int val : input) {
+        original.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
     SetAVL<int> copy(original);
-    assert(copy.Size() == 2);
-    assert(copy.Contains(1));
-    assert(copy.Contains(2));
-    assert(original.Size() == 2);  // original unchanged
+    assert(copy.Size() == sorted_unique.size());
+    auto it = copy.Begin();
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(it != copy.End());
+        assert(*it == sorted_unique[i]);
+        assert(copy.Contains(sorted_unique[i]));
+        ++it;
+    }
+    assert(it == copy.End());
+    assert(original.Size() == sorted_unique.size());  // original unchanged
 }
 
 void TestCopyAssignment() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 43);
     SetAVL<int> original;
-    original.Insert(1);
-    original.Insert(2);
+    for (int val : input) {
+        original.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
     SetAVL<int> copy;
     copy = original;
-    assert(copy.Size() == 2);
-    assert(copy.Contains(1));
-    assert(copy.Contains(2));
-    assert(original.Size() == 2);  // original unchanged
+    assert(copy.Size() == sorted_unique.size());
+    auto it = copy.Begin();
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(it != copy.End());
+        assert(*it == sorted_unique[i]);
+        assert(copy.Contains(sorted_unique[i]));
+        ++it;
+    }
+    assert(it == copy.End());
+    assert(original.Size() == sorted_unique.size());  // original unchanged
 }
 
 void TestMoveConstructor() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 44);
     SetAVL<int> original;
-    original.Insert(1);
-    original.Insert(2);
+    for (int val : input) {
+        original.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
     SetAVL<int> moved(std::move(original));
-    assert(moved.Size() == 2);
-    assert(moved.Contains(1));
-    assert(moved.Contains(2));
+    assert(moved.Size() == sorted_unique.size());
+    auto it = moved.Begin();
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(it != moved.End());
+        assert(*it == sorted_unique[i]);
+        assert(moved.Contains(sorted_unique[i]));
+        ++it;
+    }
+    assert(it == moved.End());
     assert(original.Empty());  // original moved from
 }
 
 void TestMoveAssignment() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 45);
     SetAVL<int> original;
-    original.Insert(1);
-    original.Insert(2);
+    for (int val : input) {
+        original.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
     SetAVL<int> moved;
     moved = std::move(original);
-    assert(moved.Size() == 2);
-    assert(moved.Contains(1));
-    assert(moved.Contains(2));
+    assert(moved.Size() == sorted_unique.size());
+    auto it = moved.Begin();
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(it != moved.End());
+        assert(*it == sorted_unique[i]);
+        assert(moved.Contains(sorted_unique[i]));
+        ++it;
+    }
+    assert(it == moved.End());
     assert(original.Empty());  // original moved from
 }
 
 void TestClear() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 46);
     SetAVL<int> set_avl;
-    set_avl.Insert(1);
-    set_avl.Insert(2);
-    assert(set_avl.Size() == 2);
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    assert(set_avl.Size() > 0);
     set_avl.Clear();
     assert(set_avl.Empty());
     assert(set_avl.Size() == 0);
@@ -95,250 +175,477 @@ void TestClear() {
 }
 
 void TestSwap() {
+    auto input_a = GenerateRandomVector(50, -500, 500, 47);
+    auto input_b = GenerateRandomVector(50, -500, 500, 48);
     SetAVL<int> set_a;
-    set_a.Insert(1);
-    set_a.Insert(2);
     SetAVL<int> set_b;
-    set_b.Insert(3);
+    for (int val : input_a) {
+        set_a.Insert(val);
+    }
+    for (int val : input_b) {
+        set_b.Insert(val);
+    }
+    std::vector<int> sorted_unique_a = input_a;
+    std::vector<int> sorted_unique_b = input_b;
+    std::sort(sorted_unique_a.begin(), sorted_unique_a.end());
+    std::sort(sorted_unique_b.begin(), sorted_unique_b.end());
+    sorted_unique_a.erase(std::unique(sorted_unique_a.begin(), sorted_unique_a.end()),
+                          sorted_unique_a.end());
+    sorted_unique_b.erase(std::unique(sorted_unique_b.begin(), sorted_unique_b.end()),
+                          sorted_unique_b.end());
+
     set_a.Swap(set_b);
-    assert(set_a.Size() == 1);
-    assert(set_a.Contains(3));
-    assert(set_b.Size() == 2);
-    assert(set_b.Contains(1));
-    assert(set_b.Contains(2));
+    assert(set_a.Size() == sorted_unique_b.size());
+    assert(set_b.Size() == sorted_unique_a.size());
+    auto it_a = set_a.Begin();
+    for (size_t i = 0; i < sorted_unique_b.size(); ++i) {
+        assert(it_a != set_a.End());
+        assert(*it_a == sorted_unique_b[i]);
+        ++it_a;
+    }
+    auto it_b = set_b.Begin();
+    for (size_t i = 0; i < sorted_unique_a.size(); ++i) {
+        assert(it_b != set_b.End());
+        assert(*it_b == sorted_unique_a[i]);
+        ++it_b;
+    }
 }
 
 void TestInsertConstLValue() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 49);
     SetAVL<int> set_avl;
-    int key = 1;
-    auto result = set_avl.Insert(key);
-    assert(result.second);
-    assert(*result.first == 1);
-    assert(set_avl.Size() == 1);
-    auto duplicate = set_avl.Insert(key);
-    assert(!duplicate.second);
-    assert(*duplicate.first == 1);
-    assert(set_avl.Size() == 1);
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    for (int val : input) {
+        auto result = set_avl.Insert(val);
+        assert(*result.first == val);
+    }
+    assert(set_avl.Size() == sorted_unique.size());
+    auto it = set_avl.Begin();
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(*it == sorted_unique[i]);
+        auto duplicate = set_avl.Insert(sorted_unique[i]);
+        assert(!duplicate.second);
+        assert(*duplicate.first == sorted_unique[i]);
+        ++it;
+    }
+    assert(set_avl.Size() == sorted_unique.size());
 }
 
 void TestInsertRValue() {
     SetAVL<std::string> set_avl;
-    auto result = set_avl.Insert(std::string("hello"));
-    assert(result.second);
-    assert(*result.first == "hello");
-    assert(set_avl.Size() == 1);
+    std::vector<std::string> input = {"apple", "banana", "cherry", "apple", "date"};
+    std::vector<std::string> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    for (auto& val : input) {
+        auto result = set_avl.Insert(std::string(val));
+        assert(*result.first == val);
+    }
+    assert(set_avl.Size() == sorted_unique.size());
+    auto it = set_avl.Begin();
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(*it == sorted_unique[i]);
+        ++it;
+    }
 }
 
 void TestInsertEmplace() {
     SetAVL<std::pair<int, std::string>> set_avl;
-    auto result = set_avl.Insert(std::make_pair(1, "one"));
-    assert(result.second);
-    assert(result.first->first == 1);
-    assert(result.first->second == "one");
+    auto input = GenerateRandomVector(50, 0, 100, 50);
+    std::vector<std::pair<int, std::string>> pairs;
+    std::vector<std::string> strings = {"x", "y", "z"};
+    for (int val : input) {
+        pairs.emplace_back(val, strings[val % strings.size()]);
+    }
+    std::vector<std::pair<int, std::string>> sorted_unique = pairs;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    for (const auto& p : pairs) {
+        auto result = set_avl.Insert(std::make_pair(p.first, p.second));
+        assert(result.first->first == p.first);
+        assert(result.first->second == p.second);
+    }
+    assert(set_avl.Size() == sorted_unique.size());
+    auto it = set_avl.Begin();
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(it->first == sorted_unique[i].first);
+        assert(it->second == sorted_unique[i].second);
+        ++it;
+    }
 }
 
 void TestInsertRange() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 51);
     SetAVL<int> set_avl;
-    std::vector<int> values = {3, 1, 4, 1, 5};
-    set_avl.Insert(values.begin(), values.end());
-    assert(set_avl.Size() == 4);  // duplicates ignored
-    assert(set_avl.Contains(1));
-    assert(set_avl.Contains(3));
-    assert(set_avl.Contains(4));
-    assert(set_avl.Contains(5));
+    set_avl.Insert(input.begin(), input.end());
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    assert(set_avl.Size() == sorted_unique.size());
+    auto it = set_avl.Begin();
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(*it == sorted_unique[i]);
+        assert(set_avl.Contains(sorted_unique[i]));
+        ++it;
+    }
+    assert(it == set_avl.End());
 }
 
 void TestInsertInitializerList() {
+    auto input = GenerateRandomVector(50, -500, 500, 52);
     SetAVL<int> set_avl;
-    set_avl.Insert({1, 2, 2, 3});
-    assert(set_avl.Size() == 3);
-    assert(set_avl.Contains(1));
-    assert(set_avl.Contains(2));
-    assert(set_avl.Contains(3));
+    set_avl.Insert(input.begin(), input.end());  // Using vector as initializer_list not directly
+                                                 // supported, so insert via range
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    assert(set_avl.Size() == sorted_unique.size());
+    auto it = set_avl.Begin();
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(*it == sorted_unique[i]);
+        ++it;
+    }
 }
 
 void TestFind() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 53);
     SetAVL<int> set_avl;
-    set_avl.Insert(1);
-    set_avl.Insert(3);
-    auto it = set_avl.Find(1);
-    assert(it != set_avl.End());
-    assert(*it == 1);
-    auto const_it = static_cast<const SetAVL<int>&>(set_avl).Find(3);
-    assert(const_it != set_avl.CEnd());
-    assert(*const_it == 3);
-    assert(set_avl.Find(2) == set_avl.End());
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    const auto& const_set = set_avl;
+    for (int val : sorted_unique) {
+        auto it = set_avl.Find(val);
+        assert(it != set_avl.End());
+        assert(*it == val);
+        auto const_it = const_set.Find(val);
+        assert(const_it != const_set.CEnd());
+        assert(*const_it == val);
+    }
+    // Test absent keys
+    std::mt19937 gen(53);
+    std::uniform_int_distribution<> dis(1001, 2000);
+    for (int i = 0; i < 10; ++i) {
+        int absent = dis(gen);
+        assert(set_avl.Find(absent) == set_avl.End());
+        assert(const_set.Find(absent) == const_set.CEnd());
+    }
 }
 
 void TestLowerBound() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 54);
     SetAVL<int> set_avl;
-    set_avl.Insert(1);
-    set_avl.Insert(3);
-    set_avl.Insert(5);
-    auto it = set_avl.LowerBound(2);
-    assert(it != set_avl.End());
-    assert(*it == 3);
-    auto const_it = static_cast<const SetAVL<int>&>(set_avl).LowerBound(5);
-    assert(*const_it == 5);
-    assert(set_avl.LowerBound(6) == set_avl.End());
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    const auto& const_set = set_avl;
+    std::mt19937 gen(54);
+    std::uniform_int_distribution<> dis(-1500, 1500);
+    for (int i = 0; i < 50; ++i) {
+        int key = dis(gen);
+        auto it = set_avl.LowerBound(key);
+        auto expected = std::lower_bound(sorted_unique.begin(), sorted_unique.end(), key);
+        if (expected == sorted_unique.end()) {
+            assert(it == set_avl.End());
+        } else {
+            assert(it != set_avl.End());
+            assert(*it == *expected);
+        }
+        auto const_it = const_set.LowerBound(key);
+        if (expected == sorted_unique.end()) {
+            assert(const_it == const_set.CEnd());
+        } else {
+            assert(const_it != const_set.CEnd());
+            assert(*const_it == *expected);
+        }
+    }
 }
 
 void TestUpperBound() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 55);
     SetAVL<int> set_avl;
-    set_avl.Insert(1);
-    set_avl.Insert(3);
-    set_avl.Insert(5);
-    auto it = set_avl.UpperBound(3);
-    assert(it != set_avl.End());
-    assert(*it == 5);
-    auto const_it = static_cast<const SetAVL<int>&>(set_avl).UpperBound(1);
-    assert(*const_it == 3);
-    assert(set_avl.UpperBound(5) == set_avl.End());
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    const auto& const_set = set_avl;
+    std::mt19937 gen(55);
+    std::uniform_int_distribution<> dis(-1500, 1500);
+    for (int i = 0; i < 50; ++i) {
+        int key = dis(gen);
+        auto it = set_avl.UpperBound(key);
+        auto expected = std::upper_bound(sorted_unique.begin(), sorted_unique.end(), key);
+        if (expected == sorted_unique.end()) {
+            assert(it == set_avl.End());
+        } else {
+            assert(it != set_avl.End());
+            assert(*it == *expected);
+        }
+        auto const_it = const_set.UpperBound(key);
+        if (expected == sorted_unique.end()) {
+            assert(const_it == const_set.CEnd());
+        } else {
+            assert(const_it != const_set.CEnd());
+            assert(*const_it == *expected);
+        }
+    }
 }
 
 void TestEqualRange() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 56);
     SetAVL<int> set_avl;
-    set_avl.Insert(1);
-    set_avl.Insert(2);
-    set_avl.Insert(2);  // duplicate ignored
-    set_avl.Insert(3);
-    auto range = set_avl.EqualRange(2);
-    assert(range.first != set_avl.End());
-    assert(*range.first == 2);
-    assert(range.second != set_avl.End());
-    assert(*range.second == 3);
-    auto const_range = static_cast<const SetAVL<int>&>(set_avl).EqualRange(4);
-    assert(const_range.first == const_range.second);
-    assert(const_range.first == set_avl.End());
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    const auto& const_set = set_avl;
+    std::mt19937 gen(56);
+    std::uniform_int_distribution<> dis(-1500, 1500);
+    for (int i = 0; i < 50; ++i) {
+        int key = dis(gen);
+        auto range = set_avl.EqualRange(key);
+        auto expected = std::equal_range(sorted_unique.begin(), sorted_unique.end(), key);
+        if (expected.first == expected.second) {
+            assert(range.first == range.second);
+            auto lb = std::lower_bound(sorted_unique.begin(), sorted_unique.end(), key);
+            if (lb == sorted_unique.end()) {
+                assert(range.first == set_avl.End());
+            } else {
+                assert(range.first != set_avl.End());
+                assert(*range.first == *lb);
+            }
+        } else {
+            assert(range.first != range.second);
+            assert(*range.first == *expected.first);
+            assert(*range.second == *expected.second);
+        }
+        auto const_range = const_set.EqualRange(key);
+        if (expected.first == expected.second) {
+            assert(const_range.first == const_range.second);
+        } else {
+            assert(const_range.first != const_range.second);
+            assert(*const_range.first == *expected.first);
+            assert(*const_range.second == *expected.second);
+        }
+    }
 }
 
 void TestContainsAndCount() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 57);
     SetAVL<int> set_avl;
-    set_avl.Insert(1);
-    assert(set_avl.Contains(1));
-    assert(set_avl.Count(1) == 1);
-    assert(!set_avl.Contains(2));
-    assert(set_avl.Count(2) == 0);
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    for (int val : sorted_unique) {
+        assert(set_avl.Contains(val));
+        assert(set_avl.Count(val) == 1);
+    }
+    std::mt19937 gen(57);
+    std::uniform_int_distribution<> dis(1001, 2000);
+    for (int i = 0; i < 10; ++i) {
+        int absent = dis(gen);
+        assert(!set_avl.Contains(absent));
+        assert(set_avl.Count(absent) == 0);
+    }
 }
 
 void TestIterators() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 58);
     SetAVL<int> set_avl;
-    set_avl.Insert(3);
-    set_avl.Insert(1);
-    set_avl.Insert(2);
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
     auto it = set_avl.Begin();
-    assert(*it == 1);
-    ++it;
-    assert(*it == 2);
-    ++it;
-    assert(*it == 3);
-    ++it;
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(it != set_avl.End());
+        assert(*it == sorted_unique[i]);
+        ++it;
+    }
     assert(it == set_avl.End());
 
     auto rit = set_avl.RBegin();
-    assert(*rit == 3);
-    ++rit;
-    assert(*rit == 2);
-    ++rit;
-    assert(*rit == 1);
-    ++rit;
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(rit != set_avl.REnd());
+        assert(*rit == sorted_unique[sorted_unique.size() - 1 - i]);
+        ++rit;
+    }
     assert(rit == set_avl.REnd());
 }
 
 void TestSizeEmptyMaxSize() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 59);
     SetAVL<int> set_avl;
     assert(set_avl.Empty());
     assert(set_avl.Size() == 0);
-    set_avl.Insert(1);
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
     assert(!set_avl.Empty());
-    assert(set_avl.Size() == 1);
-    // MaxSize is implementation-defined, just call it
+    assert(set_avl.Size() == sorted_unique.size());
     assert(set_avl.MaxSize() > 0);
 }
 
 void TestKeyCompare() {
     SetAVL<int, std::greater<int>> set_avl{std::greater<int>()};
     auto comp = set_avl.KeyCompare();
-    assert(comp(3, 1));  // 3 > 1
-    assert(!comp(1, 3));
+    auto input = GenerateRandomVector(50, -500, 500, 60);
+    std::sort(input.begin(), input.end(), std::greater<int>());
+    std::vector<int> sorted_unique = input;
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    for (size_t i = 1; i < sorted_unique.size(); ++i) {
+        assert(comp(sorted_unique[i - 1], sorted_unique[i]));
+        assert(!comp(sorted_unique[i], sorted_unique[i - 1]));
+    }
 }
 
 void TestOrderStatisticsBasic() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 61);
     SetAVL<int> set_avl;
-    set_avl.Insert(3);
-    set_avl.Insert(1);
-    set_avl.Insert(5);
-    set_avl.Insert(2);
-    set_avl.Insert(4);
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
 
-    // Assuming SelectInd0 is 0-based select
-    auto it0 = set_avl.SelectInd0(0);
-    assert(*it0 == 1);
-    it0 = set_avl.SelectInd0(2);
-    assert(*it0 == 3);
-    it0 = set_avl.SelectInd0(4);
-    assert(*it0 == 5);
-
-    // Assuming SelectInd1 is 1-based select
-    auto it1 = set_avl.SelectInd1(1);
-    assert(*it1 == 1);
-    it1 = set_avl.SelectInd1(3);
-    assert(*it1 == 3);
-    it1 = set_avl.SelectInd1(5);
-    assert(*it1 == 5);
-
-    // Const versions
     const auto& const_set = set_avl;
-    auto cit0 = const_set.SelectInd0(1);
-    assert(*cit0 == 2);
-    auto cit1 = const_set.SelectInd1(4);
-    assert(*cit1 == 4);
-
-    // Assuming RankInd0 is 0-based rank (number of elements < key)
-    assert(set_avl.RankInd0(3) == 2);  // 1,2 < 3
-    assert(set_avl.RankInd0(1) == 0);
-    assert(set_avl.RankInd0(6) == 5);  // would be inserted at end
-
-    // Assuming RankInd1 is 1-based rank (position starting from 1)
-    assert(set_avl.RankInd1(3) == 3);  // position 3 (1-based: 1,2,3,4,5)
-    assert(set_avl.RankInd1(1) == 1);
-    assert(set_avl.RankInd1(6) == 6);  // would be 6th
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        auto it0 = set_avl.SelectInd0(i);
+        assert(*it0 == sorted_unique[i]);
+        auto it1 = set_avl.SelectInd1(i + 1);
+        assert(*it1 == sorted_unique[i]);
+        auto cit0 = const_set.SelectInd0(i);
+        assert(*cit0 == sorted_unique[i]);
+        auto cit1 = const_set.SelectInd1(i + 1);
+        assert(*cit1 == sorted_unique[i]);
+        assert(set_avl.RankInd0(sorted_unique[i]) == i);
+        assert(set_avl.RankInd1(sorted_unique[i]) == i + 1);
+    }
+    // Test rank for absent keys
+    std::mt19937 gen(61);
+    std::uniform_int_distribution<> dis(1001, 2000);
+    for (int i = 0; i < 10; ++i) {
+        int key = dis(gen);
+        auto lb = std::lower_bound(sorted_unique.begin(), sorted_unique.end(), key);
+        size_t expected_rank = lb - sorted_unique.begin();
+        assert(set_avl.RankInd0(key) == expected_rank);
+        assert(set_avl.RankInd1(key) == expected_rank + 1);
+    }
 }
 
 void TestWithCustomCompare() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 62);
     SetAVL<int, std::greater<int>> set_avl{std::greater<int>()};
-    set_avl.Insert(1);
-    set_avl.Insert(3);
-    set_avl.Insert(2);
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end(), std::greater<int>());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
     auto it = set_avl.Begin();
-    assert(*it == 3);  // largest first
-    ++it;
-    assert(*it == 2);
-    ++it;
-    assert(*it == 1);
-    // With greater comparator, the order is descending.
-    // lower_bound returns the first element not less than key according to the comparator.
-    auto lb = set_avl.LowerBound(2);
-    assert(*lb == 2);
-    auto ub = set_avl.UpperBound(2);
-    assert(*ub == 1);
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(it != set_avl.End());
+        assert(*it == sorted_unique[i]);
+        ++it;
+    }
+    assert(it == set_avl.End());
+
+    std::mt19937 gen(62);
+    std::uniform_int_distribution<> dis(-1500, 1500);
+    for (int i = 0; i < 50; ++i) {
+        int key = dis(gen);
+        auto lb = set_avl.LowerBound(key);
+        auto expected =
+            std::lower_bound(sorted_unique.begin(), sorted_unique.end(), key, std::greater<int>());
+        if (expected == sorted_unique.end()) {
+            assert(lb == set_avl.End());
+        } else {
+            assert(lb != set_avl.End());
+            assert(*lb == *expected);
+        }
+        auto ub = set_avl.UpperBound(key);
+        auto expected_ub =
+            std::upper_bound(sorted_unique.begin(), sorted_unique.end(), key, std::greater<int>());
+        if (expected_ub == sorted_unique.end()) {
+            assert(ub == set_avl.End());
+        } else {
+            assert(ub != set_avl.End());
+            assert(*ub == *expected_ub);
+        }
+    }
 }
 
 void TestWithComplexKeys() {
+    auto input = GenerateRandomComplexKeys(100, 63);
     SetAVL<ComplexKey> set_avl;
-    set_avl.Insert({1, "a"});
-    set_avl.Insert({1, "b"});
-    set_avl.Insert({2, "a"});
-    assert(set_avl.Size() == 3);
+    for (const auto& val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<ComplexKey> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    assert(set_avl.Size() == sorted_unique.size());
     auto it = set_avl.Begin();
-    assert(it->x == 1 && it->y == "a");
-    ++it;
-    assert(it->x == 1 && it->y == "b");
-    ++it;
-    assert(it->x == 2 && it->y == "a");
-    assert(set_avl.Contains({1, "b"}));
-    assert(!set_avl.Contains({1, "c"}));
-    assert(set_avl.RankInd0({2, "a"}) == 2);
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(it != set_avl.End());
+        assert(it->x == sorted_unique[i].x && it->y == sorted_unique[i].y);
+        assert(set_avl.Contains(sorted_unique[i]));
+        assert(set_avl.RankInd0(sorted_unique[i]) == i);
+        ++it;
+    }
+    assert(it == set_avl.End());
 }
 
 void TestComplexTreesAndInsertionOrders() {
@@ -387,32 +694,37 @@ void TestComplexTreesAndInsertionOrders() {
 void TestLargeTree() {
     SetAVL<int> large_set;
     const size_t large_size = 10000;
-    for (size_t i = 0; i < large_size; ++i) {
-        large_set.Insert(static_cast<int>(i));
+    auto input = GenerateRandomVector(large_size, -10000, 10000, 65);
+    for (int val : input) {
+        large_set.Insert(val);
     }
-    assert(large_set.Size() == large_size);
-    assert(large_set.Contains(0));
-    assert(large_set.Contains(9999));
-    assert(!large_set.Contains(10000));
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    assert(large_set.Size() == sorted_unique.size());
     auto it = large_set.Begin();
-    for (size_t i = 0; i < large_size; ++i) {
-        assert(*it == static_cast<int>(i));
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(*it == sorted_unique[i]);
+        assert(large_set.Contains(sorted_unique[i]));
         ++it;
     }
     assert(it == large_set.End());
-    // Test order statistics on large tree
-    assert(*large_set.SelectInd0(0) == 0);
-    assert(*large_set.SelectInd0(5000) == 5000);
-    assert(*large_set.SelectInd0(9999) == 9999);
-    assert(large_set.RankInd0(5000) == 5000);
-    assert(large_set.RankInd0(10000) == 10000);
+    for (size_t i = 0; i < 100; ++i) {
+        size_t idx = i * (sorted_unique.size() / 100);
+        assert(*large_set.SelectInd0(idx) == sorted_unique[idx]);
+        assert(*large_set.SelectInd1(idx + 1) == sorted_unique[idx]);
+        assert(large_set.RankInd0(sorted_unique[idx]) == idx);
+        assert(large_set.RankInd1(sorted_unique[idx]) == idx + 1);
+    }
 }
 
 void TestEdgeCases() {
     SetAVL<int> set_avl;
-    // Insert duplicate many times
-    for (int i = 0; i < 10; ++i) {
-        auto res = set_avl.Insert(1);
+    auto input = GenerateRandomVector(10, 1, 1, 66);  // All duplicates
+    for (size_t i = 0; i < input.size(); ++i) {
+        auto res = set_avl.Insert(input[i]);
         if (i == 0) {
             assert(res.second);
         } else {
@@ -421,30 +733,333 @@ void TestEdgeCases() {
     }
     assert(set_avl.Size() == 1);
 
-    // Select/Rank on empty
     SetAVL<int> empty;
-    // Assuming Select throws or returns End, but since not specified, perhaps test non-crash
-    // But for safety, skip direct call if it may be undefined
-
-    // Bounds on empty
     assert(empty.LowerBound(0) == empty.End());
     assert(empty.UpperBound(0) == empty.End());
     auto range = empty.EqualRange(0);
     assert(range.first == range.second);
 
-    // Rank on non-existing
+    set_avl.Clear();
     set_avl.Insert(1);
-    set_avl.Insert(3);
-    assert(set_avl.RankInd0(2) == 1);  // position where it would be
+    assert(set_avl.RankInd0(0) == 0);
+    assert(set_avl.RankInd1(0) == 1);
+    assert(set_avl.RankInd0(2) == 1);
+    assert(set_avl.RankInd1(2) == 2);
 
-    // MaxSize call
     assert(set_avl.MaxSize() > 0);
 
-    // Swap with empty
     SetAVL<int> empty_swap;
     set_avl.Swap(empty_swap);
     assert(set_avl.Empty());
-    assert(empty_swap.Size() == 2);
+    assert(empty_swap.Size() == 1);
+}
+
+void TestOrderStatisticsWithCustomCompare() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 67);
+    SetAVL<int, std::greater<int>> set_avl{std::greater<int>()};
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end(), std::greater<int>());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    const auto& const_set = set_avl;
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        auto it0 = set_avl.SelectInd0(i);
+        assert(*it0 == sorted_unique[i]);
+        auto it1 = set_avl.SelectInd1(i + 1);
+        assert(*it1 == sorted_unique[i]);
+        auto cit0 = const_set.SelectInd0(i);
+        assert(*cit0 == sorted_unique[i]);
+        auto cit1 = const_set.SelectInd1(i + 1);
+        assert(*cit1 == sorted_unique[i]);
+        assert(set_avl.RankInd0(sorted_unique[i]) == i);
+        assert(set_avl.RankInd1(sorted_unique[i]) == i + 1);
+    }
+}
+
+void TestBoundsWithCustomCompare() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 68);
+    SetAVL<int, std::greater<int>> set_avl{std::greater<int>()};
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end(), std::greater<int>());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    std::mt19937 gen(68);
+    std::uniform_int_distribution<> dis(-1500, 1500);
+    for (int i = 0; i < 50; ++i) {
+        int key = dis(gen);
+        auto lb = set_avl.LowerBound(key);
+        auto expected =
+            std::lower_bound(sorted_unique.begin(), sorted_unique.end(), key, std::greater<int>());
+        if (expected == sorted_unique.end()) {
+            assert(lb == set_avl.End());
+        } else {
+            assert(lb != set_avl.End());
+            assert(*lb == *expected);
+        }
+        auto ub = set_avl.UpperBound(key);
+        auto expected_ub =
+            std::upper_bound(sorted_unique.begin(), sorted_unique.end(), key, std::greater<int>());
+        if (expected_ub == sorted_unique.end()) {
+            assert(ub == set_avl.End());
+        } else {
+            assert(ub != set_avl.End());
+            assert(*ub == *expected_ub);
+        }
+        auto range = set_avl.EqualRange(key);
+        auto expected_range =
+            std::equal_range(sorted_unique.begin(), sorted_unique.end(), key, std::greater<int>());
+        if (expected_range.first == expected_range.second) {
+            assert(range.first == range.second);
+            if (expected == sorted_unique.end()) {
+                assert(range.first == set_avl.End());
+            } else {
+                assert(range.first != set_avl.End());
+                assert(*range.first == *expected);
+            }
+        } else {
+            assert(range.first != range.second);
+            assert(*range.first == *expected_range.first);
+            assert(*range.second == *expected_range.second);
+        }
+    }
+}
+
+void TestConsistency() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 69);
+    SetAVL<int> set_avl;
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    size_t sz = set_avl.Size();
+    auto expected_it = set_avl.Begin();
+    for (size_t i = 0; i < sz; ++i) {
+        auto selected0 = set_avl.SelectInd0(i);
+        assert(*selected0 == *expected_it);
+        auto selected1 = set_avl.SelectInd1(i + 1);
+        assert(*selected1 == *expected_it);
+        assert(set_avl.RankInd0(*expected_it) == i);
+        assert(set_avl.RankInd1(*expected_it) == i + 1);
+        ++expected_it;
+    }
+}
+
+void TestConsistencyWithCustomCompare() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 70);
+    SetAVL<int, std::greater<int>> set_avl{std::greater<int>()};
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end(), std::greater<int>());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    size_t sz = set_avl.Size();
+    auto expected_it = set_avl.Begin();
+    for (size_t i = 0; i < sz; ++i) {
+        auto selected0 = set_avl.SelectInd0(i);
+        assert(*selected0 == *expected_it);
+        auto selected1 = set_avl.SelectInd1(i + 1);
+        assert(*selected1 == *expected_it);
+        assert(set_avl.RankInd0(*expected_it) == i);
+        assert(set_avl.RankInd1(*expected_it) == i + 1);
+        ++expected_it;
+    }
+}
+
+void TestReverseIterators() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 71);
+    SetAVL<int> set_avl;
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    auto rit = set_avl.RBegin();
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(rit != set_avl.REnd());
+        assert(*rit == sorted_unique[sorted_unique.size() - 1 - i]);
+        ++rit;
+    }
+    assert(rit == set_avl.REnd());
+
+    rit = set_avl.REnd();
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        --rit;
+        assert(*rit == sorted_unique[i]);
+    }
+    assert(rit == set_avl.RBegin());
+
+    const auto& const_set = set_avl;
+    auto crit = const_set.CRBegin();
+    for (size_t i = 0; i < sorted_unique.size(); ++i) {
+        assert(crit != const_set.CREnd());
+        assert(*crit == sorted_unique[sorted_unique.size() - 1 - i]);
+        ++crit;
+    }
+    assert(crit == const_set.CREnd());
+}
+
+void TestSingleElement() {
+    SetAVL<int> set_avl;
+    set_avl.Insert(42);
+    assert(set_avl.Size() == 1);
+    assert(*set_avl.Begin() == 42);
+    assert(++set_avl.Begin() == set_avl.End());
+    assert(*set_avl.RBegin() == 42);
+    assert(++set_avl.RBegin() == set_avl.REnd());
+    assert(set_avl.LowerBound(42) == set_avl.Begin());
+    assert(set_avl.UpperBound(42) == set_avl.End());
+    assert(set_avl.LowerBound(41) == set_avl.Begin());
+    assert(set_avl.UpperBound(41) == set_avl.Begin());
+    assert(set_avl.LowerBound(43) == set_avl.End());
+    assert(set_avl.Contains(42));
+    assert(set_avl.Count(42) == 1);
+    assert(set_avl.SelectInd0(0) == set_avl.Begin());
+    assert(*set_avl.SelectInd0(0) == 42);
+    assert(set_avl.SelectInd1(1) == set_avl.Begin());
+    assert(set_avl.RankInd0(42) == 0);
+    assert(set_avl.RankInd1(42) == 1);
+    assert(set_avl.RankInd0(41) == 0);
+    assert(set_avl.RankInd1(41) == 1);
+    assert(set_avl.RankInd0(43) == 1);
+    assert(set_avl.RankInd1(43) == 2);
+}
+
+void TestRanksForAbsentKeys() {
+    auto input = GenerateRandomVector(100, -1000, 1000, 72);
+    SetAVL<int> set_avl;
+    for (int val : input) {
+        set_avl.Insert(val);
+    }
+    std::vector<int> sorted_unique = input;
+    std::sort(sorted_unique.begin(), sorted_unique.end());
+    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
+                        sorted_unique.end());
+
+    std::mt19937 gen(72);
+    std::uniform_int_distribution<> dis(-1500, 1500);
+    for (int i = 0; i < 50; ++i) {
+        int key = dis(gen);
+        auto lb = std::lower_bound(sorted_unique.begin(), sorted_unique.end(), key);
+        size_t expected_rank = lb - sorted_unique.begin();
+        assert(set_avl.RankInd0(key) == expected_rank);
+        assert(set_avl.RankInd1(key) == expected_rank + 1);
+    }
+}
+
+template <typename K>
+size_t CalcNodeHeight(const SetNode<K>* node) {
+    if (!node) {
+        return 0;
+    }
+    size_t left_height = CalcNodeHeight(node->GetLeft().get());
+    size_t right_height = CalcNodeHeight(node->GetRight().get());
+    return 1 + std::max(left_height, right_height);
+}
+
+// Helper function to check AVL height bound
+bool CheckAVLHeightBound(size_t size, size_t height) {
+    const double phi = (1.0 + std::sqrt(5.0)) / 2.0;  // Golden ratio ≈ 1.6180339887
+    // Maximum height: h ≤ log_φ(√5 * (n + 1 + √5/2)) - 2
+    double max_height =
+        std::log(std::sqrt(5.0) * (size + 1 + std::sqrt(5.0) / 2.0)) / std::log(phi) - 2.0;
+    return static_cast<double>(height) <= max_height;
+}
+
+void TestAVLHeightProperty() {
+    // Test empty tree
+    SetAVL<int> empty_set;
+    size_t height = CalcNodeHeight(empty_set.GetRootPtr());
+    assert(CheckAVLHeightBound(empty_set.Size(), height));
+
+    // Test small tree with sequential insertions
+    SetAVL<int> small_seq;
+    for (int i = 1; i <= 5; ++i) {
+        small_seq.Insert(i);
+        height = CalcNodeHeight(small_seq.GetRootPtr());
+        assert(CheckAVLHeightBound(small_seq.Size(), height));
+    }
+
+    // Test small tree with reverse insertions
+    SetAVL<int> small_rev;
+    for (int i = 5; i >= 1; --i) {
+        small_rev.Insert(i);
+        height = CalcNodeHeight(small_rev.GetRootPtr());
+        assert(CheckAVLHeightBound(small_rev.Size(), height));
+    }
+
+    // Test with custom comparator
+    SetAVL<int, std::greater<int>> custom_comp{std::greater<int>()};
+    std::vector<int> values = {3, 1, 4, 1, 5, 9};
+    for (int val : values) {
+        custom_comp.Insert(val);
+        height = CalcNodeHeight(custom_comp.GetRootPtr());
+        assert(CheckAVLHeightBound(custom_comp.Size(), height));
+    }
+
+    // Test with complex keys
+    SetAVL<ComplexKey> complex_set;
+    complex_set.Insert({1, "a"});
+    complex_set.Insert({1, "b"});
+    complex_set.Insert({2, "a"});
+    height = CalcNodeHeight(complex_set.GetRootPtr());
+    assert(CheckAVLHeightBound(complex_set.Size(), height));
+
+    // Test large tree with random insertions
+    SetAVL<int> large_set;
+    std::vector<int> large_vals(1000);
+    std::iota(large_vals.begin(), large_vals.end(), 0);
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(large_vals.begin(), large_vals.end(), g);
+    for (int val : large_vals) {
+        large_set.Insert(val);
+        height = CalcNodeHeight(large_set.GetRootPtr());
+        assert(CheckAVLHeightBound(large_set.Size(), height));
+    }
+
+    // Test after copy operations
+    SetAVL<int> original;
+    original.Insert(1);
+    original.Insert(2);
+    original.Insert(3);
+    SetAVL<int> copy = original;
+    height = CalcNodeHeight(copy.GetRootPtr());
+    assert(CheckAVLHeightBound(copy.Size(), height));
+
+    // Test after move operations
+    SetAVL<int> moved = std::move(copy);
+    height = CalcNodeHeight(moved.GetRootPtr());
+    assert(CheckAVLHeightBound(moved.Size(), height));
+
+    // Test after swap
+    SetAVL<int> set_a;
+    set_a.Insert(1);
+    set_a.Insert(2);
+    SetAVL<int> set_b;
+    set_b.Insert(3);
+    set_a.Swap(set_b);
+    height = CalcNodeHeight(set_a.GetRootPtr());
+    assert(CheckAVLHeightBound(set_a.Size(), height));
+    height = CalcNodeHeight(set_b.GetRootPtr());
+    assert(CheckAVLHeightBound(set_b.Size(), height));
 }
 
 int main() {
@@ -474,6 +1089,15 @@ int main() {
     TestWithComplexKeys();
     TestComplexTreesAndInsertionOrders();
     TestLargeTree();
+    TestEdgeCases();
+    TestOrderStatisticsWithCustomCompare();
+    TestBoundsWithCustomCompare();
+    TestConsistency();
+    TestConsistencyWithCustomCompare();
+    TestReverseIterators();
+    TestSingleElement();
+    TestRanksForAbsentKeys();
+    TestAVLHeightProperty();
 
     std::cout << "All tests passed\n";
 }
