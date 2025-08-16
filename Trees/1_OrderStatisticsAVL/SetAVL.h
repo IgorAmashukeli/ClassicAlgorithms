@@ -206,6 +206,8 @@ public:
     using ConstReference = const SetType&;
     using ConstPointer = const SetType*;
 
+    class ConstIterator;
+
     class Iterator {
     public:
         Iterator() noexcept = default;
@@ -309,7 +311,6 @@ public:
         bool operator!=(const ConstIterator& other) const noexcept {
             return node_ != other.node_;
         }
-        friend class SetAVL;
 
     private:
         void Inc() {
@@ -326,6 +327,8 @@ public:
         }
         const SetBaseNode<K>* node_ = nullptr;
     };
+
+    class ConstReverseIterator;
 
     class ReverseIterator {
     public:
@@ -569,7 +572,7 @@ public:
         if (node == nullptr) {
             return End();
         }
-        if (Equivalent(node->GetKey(), key)) {
+        if (Equivalent(node->GetKey(), key, KeyCompare())) {
             return ConstIterator{node->GetNext()};
         }
         return ConstIterator{node};
@@ -709,8 +712,8 @@ private:
         if (node == nullptr || node->GetRight() == nullptr) {
             return false;
         }
-        return (GetNodeBalance(node) == -2) && (GetNodeBalance(node->GetRight().get()) == -1) ||
-               (GetNodeBalance(node->GetRight().get()) == 0);
+        return (GetNodeBalance(node) == -2) && ((GetNodeBalance(node->GetRight().get()) == -1) ||
+                                                (GetNodeBalance(node->GetRight().get()) == 0));
     }
     bool RightRotateNeded(SetNode<K>* node) {
         if (node == nullptr || node->GetLeft() == nullptr) {

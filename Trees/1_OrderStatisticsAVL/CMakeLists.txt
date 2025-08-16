@@ -20,4 +20,4 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 # Your executable
-add_executable(BST.h tests.cpp)
+add_executable(SetAVL.h tests.cpp)
