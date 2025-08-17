@@ -355,13 +355,6 @@ public:
 
     class ConstReverseIterator {
     public:
-        ConstReverseIterator() noexcept = default;
-        ConstReverseIterator(const ConstReverseIterator& other) noexcept = default;
-        ConstReverseIterator& operator=(const ConstReverseIterator& other) noexcept = default;
-        ConstReverseIterator(ConstReverseIterator&& other) noexcept = default;
-        ConstReverseIterator& operator=(ConstReverseIterator&& other) noexcept = default;
-        ~ConstReverseIterator() noexcept = default;
-
         explicit ConstReverseIterator(const SetBaseNode<K>* node) noexcept : node_(node) {
         }
         ConstReverseIterator(ReverseIterator it) noexcept : node_(it.node_) {
