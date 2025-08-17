@@ -1097,5 +1097,5 @@ int main() {
     TestRanksForAbsentKeys();
     TestLogarithmicAVLHeightProperty();
 
-    std::cout << "\nAll tests passed";
+    std::cout << "\nAll tests passed\n";
 }
