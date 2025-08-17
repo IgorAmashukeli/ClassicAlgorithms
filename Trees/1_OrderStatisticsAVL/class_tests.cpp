@@ -2,7 +2,6 @@
 #include <cassert>
 #include <iostream>
 #include <string>
-#include <type_traits>
 #include <vector>
 #include <algorithm>
 #include <functional>
@@ -54,13 +53,15 @@ void TestDefaultConstructor() {
     assert(set_avl.CBegin() == set_avl.CEnd());
     assert(set_avl.RBegin() == set_avl.REnd());
     assert(set_avl.CRBegin() == set_avl.CREnd());
+    std::cout << "TestDefaultConstructor passed\n";
 }
 
 void TestComparatorConstructor() {
     SetAVL<int, std::greater<int>> set_avl{std::greater<int>()};
     assert(set_avl.Empty());
     assert(set_avl.Size() == 0);
-    assert(set_avl.KeyCompare()(3, 1));  // greater: 3 > 1
+    assert(set_avl.KeyCompare()(3, 1));
+    std::cout << "TestComparatorConstructor passed\n";
 }
 
 void TestCopyConstructor() {
@@ -84,7 +85,8 @@ void TestCopyConstructor() {
         ++it;
     }
     assert(it == copy.End());
-    assert(original.Size() == sorted_unique.size());  // original unchanged
+    assert(original.Size() == sorted_unique.size());
+    std::cout << "TestCopyConstructor passed\n";
 }
 
 void TestCopyAssignment() {
@@ -109,7 +111,8 @@ void TestCopyAssignment() {
         ++it;
     }
     assert(it == copy.End());
-    assert(original.Size() == sorted_unique.size());  // original unchanged
+    assert(original.Size() == sorted_unique.size());
+    std::cout << "TestCopyAssignment passed\n";
 }
 
 void TestMoveConstructor() {
@@ -133,7 +136,8 @@ void TestMoveConstructor() {
         ++it;
     }
     assert(it == moved.End());
-    assert(original.Empty());  // original moved from
+    assert(original.Empty());
+    std::cout << "TestMoveConstructor passed\n";
 }
 
 void TestMoveAssignment() {
@@ -158,7 +162,8 @@ void TestMoveAssignment() {
         ++it;
     }
     assert(it == moved.End());
-    assert(original.Empty());  // original moved from
+    assert(original.Empty());
+    std::cout << "TestMoveAssignment passed\n";
 }
 
 void TestClear() {
@@ -172,6 +177,7 @@ void TestClear() {
     assert(set_avl.Empty());
     assert(set_avl.Size() == 0);
     assert(set_avl.Begin() == set_avl.End());
+    std::cout << "TestClear passed\n";
 }
 
 void TestSwap() {
@@ -209,6 +215,7 @@ void TestSwap() {
         assert(*it_b == sorted_unique_a[i]);
         ++it_b;
     }
+    std::cout << "TestSwap passed\n";
 }
 
 void TestInsertConstLValue() {
@@ -233,6 +240,7 @@ void TestInsertConstLValue() {
         ++it;
     }
     assert(set_avl.Size() == sorted_unique.size());
+    std::cout << "TestInsertConstLValue passed\n";
 }
 
 void TestInsertRValue() {
@@ -253,6 +261,7 @@ void TestInsertRValue() {
         assert(*it == sorted_unique[i]);
         ++it;
     }
+    std::cout << "TestInsertRValue passed\n";
 }
 
 void TestInsertEmplace() {
@@ -280,6 +289,7 @@ void TestInsertEmplace() {
         assert(it->second == sorted_unique[i].second);
         ++it;
     }
+    std::cout << "TestInsertEmplace passed\n";
 }
 
 void TestInsertRange() {
@@ -299,13 +309,14 @@ void TestInsertRange() {
         ++it;
     }
     assert(it == set_avl.End());
+    std::cout << "TestInsertRange passed\n";
 }
 
 void TestInsertInitializerList() {
     auto input = GenerateRandomVector(50, -500, 500, 52);
     SetAVL<int> set_avl;
-    set_avl.Insert(input.begin(), input.end());  // Using vector as initializer_list not directly
-                                                 // supported, so insert via range
+    set_avl.Insert(input.begin(), input.end());
+
     std::vector<int> sorted_unique = input;
     std::sort(sorted_unique.begin(), sorted_unique.end());
     sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
@@ -317,6 +328,7 @@ void TestInsertInitializerList() {
         assert(*it == sorted_unique[i]);
         ++it;
     }
+    std::cout << "TestInsertInitializerList passed\n";
 }
 
 void TestFind() {
@@ -339,7 +351,6 @@ void TestFind() {
         assert(const_it != const_set.CEnd());
         assert(*const_it == val);
     }
-    // Test absent keys
     std::mt19937 gen(53);
     std::uniform_int_distribution<> dis(1001, 2000);
     for (int i = 0; i < 10; ++i) {
@@ -347,6 +358,7 @@ void TestFind() {
         assert(set_avl.Find(absent) == set_avl.End());
         assert(const_set.Find(absent) == const_set.CEnd());
     }
+    std::cout << "TestFind passed\n";
 }
 
 void TestLowerBound() {
@@ -381,6 +393,7 @@ void TestLowerBound() {
             assert(*const_it == *expected);
         }
     }
+    std::cout << "TestLowerBound passed\n";
 }
 
 void TestUpperBound() {
@@ -415,6 +428,7 @@ void TestUpperBound() {
             assert(*const_it == *expected);
         }
     }
+    std::cout << "TestUpperBound passed\n";
 }
 
 void TestEqualRange() {
@@ -458,6 +472,7 @@ void TestEqualRange() {
             assert(*const_range.second == *expected.second);
         }
     }
+    std::cout << "TestEqualRange passed\n";
 }
 
 void TestContainsAndCount() {
@@ -482,6 +497,7 @@ void TestContainsAndCount() {
         assert(!set_avl.Contains(absent));
         assert(set_avl.Count(absent) == 0);
     }
+    std::cout << "TestContainsAndCount passed\n";
 }
 
 void TestIterators() {
@@ -510,6 +526,7 @@ void TestIterators() {
         ++rit;
     }
     assert(rit == set_avl.REnd());
+    std::cout << "TestIterators passed\n";
 }
 
 void TestSizeEmptyMaxSize() {
@@ -528,6 +545,7 @@ void TestSizeEmptyMaxSize() {
     assert(!set_avl.Empty());
     assert(set_avl.Size() == sorted_unique.size());
     assert(set_avl.MaxSize() > 0);
+    std::cout << "TestSizeEmptyMaxSize passed\n";
 }
 
 void TestKeyCompare() {
@@ -543,6 +561,7 @@ void TestKeyCompare() {
         assert(comp(sorted_unique[i - 1], sorted_unique[i]));
         assert(!comp(sorted_unique[i], sorted_unique[i - 1]));
     }
+    std::cout << "TestKeyCompare passed\n";
 }
 
 void TestOrderStatisticsBasic() {
@@ -569,7 +588,6 @@ void TestOrderStatisticsBasic() {
         assert(set_avl.RankInd0(sorted_unique[i]) == i);
         assert(set_avl.RankInd1(sorted_unique[i]) == i + 1);
     }
-    // Test rank for absent keys
     std::mt19937 gen(61);
     std::uniform_int_distribution<> dis(1001, 2000);
     for (int i = 0; i < 10; ++i) {
@@ -579,6 +597,7 @@ void TestOrderStatisticsBasic() {
         assert(set_avl.RankInd0(key) == expected_rank);
         assert(set_avl.RankInd1(key) == expected_rank + 1);
     }
+    std::cout << "TestOrderStatisticsBasic passed\n";
 }
 
 void TestWithCustomCompare() {
@@ -623,6 +642,7 @@ void TestWithCustomCompare() {
             assert(*ub == *expected_ub);
         }
     }
+    std::cout << "TestWithCustomCompare passed\n";
 }
 
 void TestWithComplexKeys() {
@@ -646,10 +666,10 @@ void TestWithComplexKeys() {
         ++it;
     }
     assert(it == set_avl.End());
+    std::cout << "TestWithComplexKeys passed\n";
 }
 
 void TestComplexTreesAndInsertionOrders() {
-    // Sorted insertion (should trigger AVL rotations)
     SetAVL<int> ascending;
     for (int i = 1; i <= 10; ++i) {
         ascending.Insert(i);
@@ -661,8 +681,6 @@ void TestComplexTreesAndInsertionOrders() {
         assert(*it_asc == i);
         ++it_asc;
     }
-
-    // Reverse sorted
     SetAVL<int> descending;
     for (int i = 10; i >= 1; --i) {
         descending.Insert(i);
@@ -674,7 +692,6 @@ void TestComplexTreesAndInsertionOrders() {
         ++it_desc;
     }
 
-    // Random order
     std::vector<int> random_vals = {5, 3, 7, 2, 4, 6, 8, 1, 9, 10};
     std::random_device rd;
     std::mt19937 g(rd());
@@ -689,6 +706,7 @@ void TestComplexTreesAndInsertionOrders() {
         assert(*it_rand == i);
         ++it_rand;
     }
+    std::cout << "TestComplexTreesAndInsertionOrders passed\n";
 }
 
 void TestLargeTree() {
@@ -718,6 +736,7 @@ void TestLargeTree() {
         assert(large_set.RankInd0(sorted_unique[idx]) == idx);
         assert(large_set.RankInd1(sorted_unique[idx]) == idx + 1);
     }
+    std::cout << "TestLargeTree passed\n";
 }
 
 void TestEdgeCases() {
@@ -752,6 +771,7 @@ void TestEdgeCases() {
     set_avl.Swap(empty_swap);
     assert(set_avl.Empty());
     assert(empty_swap.Size() == 1);
+    std::cout << "TestEdgeCases passed\n";
 }
 
 void TestOrderStatisticsWithCustomCompare() {
@@ -778,6 +798,7 @@ void TestOrderStatisticsWithCustomCompare() {
         assert(set_avl.RankInd0(sorted_unique[i]) == i);
         assert(set_avl.RankInd1(sorted_unique[i]) == i + 1);
     }
+    std::cout << "TestOrderStatisticsWithCustomCompare passed\n";
 }
 
 void TestBoundsWithCustomCompare() {
@@ -830,6 +851,7 @@ void TestBoundsWithCustomCompare() {
             assert(*range.second == *expected_range.second);
         }
     }
+    std::cout << "TestBoundsWithCustomCompare passed\n";
 }
 
 void TestConsistency() {
@@ -854,6 +876,7 @@ void TestConsistency() {
         assert(set_avl.RankInd1(*expected_it) == i + 1);
         ++expected_it;
     }
+    std::cout << "TestConsistency passed\n";
 }
 
 void TestConsistencyWithCustomCompare() {
@@ -878,6 +901,7 @@ void TestConsistencyWithCustomCompare() {
         assert(set_avl.RankInd1(*expected_it) == i + 1);
         ++expected_it;
     }
+    std::cout << "TestConsistencyWithCustomCompare passed\n";
 }
 
 void TestReverseIterators() {
@@ -914,6 +938,7 @@ void TestReverseIterators() {
         ++crit;
     }
     assert(crit == const_set.CREnd());
+    std::cout << "TestReverseIterators passed\n";
 }
 
 void TestSingleElement() {
@@ -940,6 +965,7 @@ void TestSingleElement() {
     assert(set_avl.RankInd1(41) == 1);
     assert(set_avl.RankInd0(43) == 1);
     assert(set_avl.RankInd1(43) == 2);
+    std::cout << "TestSingleElement passed\n";
 }
 
 void TestRanksForAbsentKeys() {
@@ -962,34 +988,14 @@ void TestRanksForAbsentKeys() {
         assert(set_avl.RankInd0(key) == expected_rank);
         assert(set_avl.RankInd1(key) == expected_rank + 1);
     }
+    std::cout << "TestRanksForAbsentKeys passed\n";
 }
 
-template <typename K>
-size_t CalcNodeHeight(const SetNode<K>* node) {
-    if (!node) {
-        return 0;
-    }
-    size_t left_height = CalcNodeHeight(node->GetLeft().get());
-    size_t right_height = CalcNodeHeight(node->GetRight().get());
-    return 1 + std::max(left_height, right_height);
-}
-
-// Helper function to check AVL height bound
-bool CheckAVLHeightBound(size_t size, size_t height) {
-    const double phi = (1.0 + std::sqrt(5.0)) / 2.0;  // Golden ratio ≈ 1.6180339887
-    // Maximum height: h ≤ log_φ(√5 * (n + 1 + √5/2)) - 2
-    double max_height =
-        std::log(std::sqrt(5.0) * (size + 1 + std::sqrt(5.0) / 2.0)) / std::log(phi) - 2.0;
-    return static_cast<double>(height) <= max_height;
-}
-
-void TestAVLHeightProperty() {
-    // Test empty tree
+void TestLogarithmicAVLHeightProperty() {
     SetAVL<int> empty_set;
     size_t height = CalcNodeHeight(empty_set.GetRootPtr());
     assert(CheckAVLHeightBound(empty_set.Size(), height));
 
-    // Test small tree with sequential insertions
     SetAVL<int> small_seq;
     for (int i = 1; i <= 5; ++i) {
         small_seq.Insert(i);
@@ -997,15 +1003,12 @@ void TestAVLHeightProperty() {
         assert(CheckAVLHeightBound(small_seq.Size(), height));
     }
 
-    // Test small tree with reverse insertions
     SetAVL<int> small_rev;
     for (int i = 5; i >= 1; --i) {
         small_rev.Insert(i);
         height = CalcNodeHeight(small_rev.GetRootPtr());
         assert(CheckAVLHeightBound(small_rev.Size(), height));
     }
-
-    // Test with custom comparator
     SetAVL<int, std::greater<int>> custom_comp{std::greater<int>()};
     std::vector<int> values = {3, 1, 4, 1, 5, 9};
     for (int val : values) {
@@ -1013,8 +1016,6 @@ void TestAVLHeightProperty() {
         height = CalcNodeHeight(custom_comp.GetRootPtr());
         assert(CheckAVLHeightBound(custom_comp.Size(), height));
     }
-
-    // Test with complex keys
     SetAVL<ComplexKey> complex_set;
     complex_set.Insert({1, "a"});
     complex_set.Insert({1, "b"});
@@ -1022,7 +1023,6 @@ void TestAVLHeightProperty() {
     height = CalcNodeHeight(complex_set.GetRootPtr());
     assert(CheckAVLHeightBound(complex_set.Size(), height));
 
-    // Test large tree with random insertions
     SetAVL<int> large_set;
     std::vector<int> large_vals(1000);
     std::iota(large_vals.begin(), large_vals.end(), 0);
@@ -1035,7 +1035,6 @@ void TestAVLHeightProperty() {
         assert(CheckAVLHeightBound(large_set.Size(), height));
     }
 
-    // Test after copy operations
     SetAVL<int> original;
     original.Insert(1);
     original.Insert(2);
@@ -1044,12 +1043,10 @@ void TestAVLHeightProperty() {
     height = CalcNodeHeight(copy.GetRootPtr());
     assert(CheckAVLHeightBound(copy.Size(), height));
 
-    // Test after move operations
     SetAVL<int> moved = std::move(copy);
     height = CalcNodeHeight(moved.GetRootPtr());
     assert(CheckAVLHeightBound(moved.Size(), height));
 
-    // Test after swap
     SetAVL<int> set_a;
     set_a.Insert(1);
     set_a.Insert(2);
@@ -1060,6 +1057,7 @@ void TestAVLHeightProperty() {
     assert(CheckAVLHeightBound(set_a.Size(), height));
     height = CalcNodeHeight(set_b.GetRootPtr());
     assert(CheckAVLHeightBound(set_b.Size(), height));
+    std::cout << "TestLogarithmicAVLHeightProperty passed\n";
 }
 
 int main() {
@@ -1097,7 +1095,7 @@ int main() {
     TestReverseIterators();
     TestSingleElement();
     TestRanksForAbsentKeys();
-    TestAVLHeightProperty();
+    TestLogarithmicAVLHeightProperty();
 
-    std::cout << "All tests passed\n";
+    std::cout << "\nAll tests passed";
 }

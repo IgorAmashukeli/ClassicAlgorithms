@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <limits>
 #include <memory>
@@ -647,13 +648,13 @@ public:
         return SelectInd1(i + 1);
     }
     Iterator SelectInd1(size_t i) {
-        if (i > Size()) {
+        if (i > Size() || i == 0) {
             return End();
         }
         return Iterator(SelectNode(i));
     }
     ConstIterator SelectInd1(size_t i) const {
-        if (i > Size()) {
+        if (i > Size() || i == 0) {
             return End();
         }
         return ConstIterator(SelectNode(i));
@@ -1459,4 +1460,23 @@ void Swap(const SetAVL<K, Compare>& lhs, const SetAVL<K, Compare>& rhs) {
 template <typename K, typename Compare>
 bool operator!=(const SetAVL<K, Compare>& lhs, const SetAVL<K, Compare>& rhs) {
     return (lhs != rhs);
+}
+
+template <typename K>
+size_t CalcNodeHeight(const SetNode<K>* node) {
+    if (!node) {
+        return 0;
+    }
+    size_t left_height = CalcNodeHeight(node->GetLeft().get());
+    size_t right_height = CalcNodeHeight(node->GetRight().get());
+    return 1 + std::max(left_height, right_height);
+}
+
+// Helper function to check AVL height bound
+bool CheckAVLHeightBound(size_t size, size_t height) {
+    const double phi = (1.0 + std::sqrt(5.0)) / 2.0;  // Golden ratio ≈ 1.6180339887
+    // Maximum height: h ≤ log_φ(√5 * (n + 1 + √5/2)) - 2
+    double max_height =
+        std::log(std::sqrt(5.0) * (size + 1 + std::sqrt(5.0) / 2.0)) / std::log(phi) - 2.0;
+    return static_cast<double>(height) <= max_height;
 }
