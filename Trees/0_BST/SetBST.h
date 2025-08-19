@@ -422,10 +422,10 @@ public:
         }
         return *this;
     }
-    SetBST(SetBST&& other) {
+    SetBST(SetBST&& other) noexcept {
         Swap(other);
     }
-    SetBST& operator=(SetBST&& other) {
+    SetBST& operator=(SetBST&& other) noexcept {
         if (this != std::addressof(other)) {
             Swap(other);
             other.Clear();

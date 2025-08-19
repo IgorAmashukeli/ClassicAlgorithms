@@ -458,10 +458,10 @@ public:
         }
         return *this;
     }
-    MapBST(MapBST&& other) {
+    MapBST(MapBST&& other) noexcept {
         Swap(other);
     }
-    MapBST& operator=(MapBST&& other) {
+    MapBST& operator=(MapBST&& other) noexcept {
         if (this != std::addressof(other)) {
             Swap(other);
             other.Clear();

@@ -433,25 +433,17 @@ public:
     explicit SetAVL(const Compare& compare) : root_compare_(nullptr, compare) {
     }
     SetAVL(const SetAVL& other) {
-        SetBaseNode<K>* max_node = Copy(other);
-        ConnectSetEndNodesAfterCopy(max_node);
+        Copy(other);
     }
     SetAVL& operator=(const SetAVL& other) {
-        if (this != std::addressof(other)) {
-            Clear();
-            SetBaseNode<K>* max_node = Copy(other);
-            ConnectSetEndNodesAfterCopy(max_node);
-        }
-        return *this;
+        return *this = SetAVL(other);
     }
-    SetAVL(SetAVL&& other) {
+    SetAVL(SetAVL&& other) noexcept {
         Swap(other);
     }
-    SetAVL& operator=(SetAVL&& other) {
-        if (this != std::addressof(other)) {
-            Swap(other);
-            other.Clear();
-        }
+    SetAVL& operator=(SetAVL&& other) noexcept {
+        SetAVL tmp = std::move(other);
+        Swap(tmp);
         return *this;
     }
     ~SetAVL() = default;
@@ -916,9 +908,9 @@ private:
         }
     }
 
-    SetBaseNode<K>* Copy(const SetAVL& other) {
+    void Copy(const SetAVL& other) {
         if (other.Empty()) {
-            return nullptr;
+            return;
         }
         SetBaseNode<K>* prev_node = std::addressof(rend_node_);
         std::stack<std::tuple<SetNode<K>*, bool, bool>> other_nodes;
@@ -932,7 +924,7 @@ private:
             CopyIteration(other, other_nodes, nodes, top_other_node, visit_left, visit_right,
                           prev_node);
         }
-        return prev_node;
+        ConnectSetEndNodesAfterCopy(prev_node);
     }
 
     void ConnectPrevNext(SetNode<K>* node, SetBaseNode<K>* prev, SetBaseNode<K>* next) {
@@ -1151,24 +1143,36 @@ private:
     }
 
     void FixLeftBalance(SetNode<K>* left_child, SetNode<K>* node) {
+        assert(left_child != nullptr);
+        assert(node != nullptr);
         if ((GetNodeBalance(left_child) == -2) && (GetNodeBalance(node) == -1)) {
             left_child->GetBalance() = 0;
             node->GetBalance() = 0;
         } else if ((GetNodeBalance(left_child) == -2) && (GetNodeBalance(node) == 0)) {
             left_child->GetBalance() = -1;
             node->GetBalance() = 1;
+        } else {
+            assert(false);
         }
     }
     void FixRightBalance(SetNode<K>* right_child, SetNode<K>* node) {
+        assert(right_child != nullptr);
+        assert(node != nullptr);
         if ((GetNodeBalance(right_child) == 2) && (GetNodeBalance(node) == 1)) {
             right_child->GetBalance() = 0;
             node->GetBalance() = 0;
         } else if ((GetNodeBalance(right_child) == 2) && (GetNodeBalance(node) == 0)) {
             right_child->GetBalance() = 1;
             node->GetBalance() = -1;
+        } else {
+            assert(false);
         }
     }
     void FixRightLeftBalance(SetNode<K>* left_child, SetNode<K>* right_child, SetNode<K>* node) {
+        assert(left_child != nullptr);
+        assert(right_child != nullptr);
+        assert(node != nullptr);
+
         if ((GetNodeBalance(left_child) == -2) && (GetNodeBalance(right_child) == 1) &&
             (GetNodeBalance(node) == 1)) {
             left_child->GetBalance() = 0;
@@ -1186,9 +1190,16 @@ private:
             left_child->GetBalance() = 0;
             right_child->GetBalance() = 0;
             node->GetBalance() = 0;
+
+        } else {
+            assert(false);
         }
     }
     void FixLeftRightBalance(SetNode<K>* right_child, SetNode<K>* left_child, SetNode<K>* node) {
+        assert(right_child != nullptr);
+        assert(left_child != nullptr);
+        assert(node != nullptr);
+
         if ((GetNodeBalance(right_child) == 2) && (GetNodeBalance(left_child) == -1) &&
             (GetNodeBalance(node) == -1)) {
             right_child->GetBalance() = 0;
@@ -1206,6 +1217,9 @@ private:
             right_child->GetBalance() = 0;
             left_child->GetBalance() = 0;
             node->GetBalance() = 0;
+
+        } else {
+            assert(false);
         }
     }
     void FixSize(SetNode<K>* node) {
@@ -1214,6 +1228,8 @@ private:
     }
 
     std::pair<SetNode<K>*, SetNode<K>*> DoLeftRotate(std::unique_ptr<SetNode<K>>& node) {
+        assert(node != nullptr);
+        assert(node->GetRight() != nullptr);
 
         std::unique_ptr<SetNode<K>>& right_child = node->GetRight();
         std::unique_ptr<SetNode<K>>& left_subtree = node->GetLeft();
@@ -1252,6 +1268,9 @@ private:
     }
 
     std::pair<SetNode<K>*, SetNode<K>*> DoRightRotate(std::unique_ptr<SetNode<K>>& node) {
+        assert(node != nullptr);
+        assert(node->GetLeft() != nullptr);
+
         std::unique_ptr<SetNode<K>>& left_child = node->GetLeft();
         std::unique_ptr<SetNode<K>>& left_subtree = left_child->GetLeft();
         std::unique_ptr<SetNode<K>>& middle_subtree = left_child->GetRight();
@@ -1288,24 +1307,40 @@ private:
     }
 
     SetNode<K>* RotateRightLeft(std::unique_ptr<SetNode<K>>& node) {
+        assert(node != nullptr);
+        assert(node->GetRight() != nullptr);
+        assert(node->GetRight()->GetLeft() != nullptr);
+
+        assert(node->GetBalance() == -2);
+        assert(node->GetRight()->GetBalance() == 1);
+
         auto pair = DoRightRotate(node->GetRight());
         auto right_child_ptr = pair.first;
         auto node_ptr = pair.second;
 
         auto pair2 = DoLeftRotate(node);
         auto left_child_ptr = pair2.first;
+        assert(node_ptr == pair2.second);
 
         FixRightLeftBalance(left_child_ptr, right_child_ptr, node_ptr);
         return node_ptr;
     }
 
     SetNode<K>* RotateLeftRight(std::unique_ptr<SetNode<K>>& node) {
+        assert(node != nullptr);
+        assert(node->GetLeft() != nullptr);
+        assert(node->GetLeft()->GetRight() != nullptr);
+
+        assert(node->GetBalance() == 2);
+        assert(node->GetLeft()->GetBalance() == -1);
+
         auto pair = DoLeftRotate(node->GetLeft());
         auto left_child_ptr = pair.first;
         auto node_ptr = pair.second;
 
         auto pair2 = DoRightRotate(node);
         auto right_child_ptr = pair2.first;
+        assert(node_ptr == pair2.second);
 
         FixLeftRightBalance(right_child_ptr, left_child_ptr, node_ptr);
         return node_ptr;
@@ -1317,10 +1352,12 @@ private:
         } else if (node->GetParent()->GetLeft().get() == node) {
             return node->GetParent()->GetLeft();
         } else {
+            assert(node->GetParent()->GetRight().get() == node);
             return node->GetParent()->GetRight();
         }
     }
 
+    // maybe finished
     void BalanceAfterInsert(SetNode<K>* inserted_node) {
         SetNode<K>* current_node = inserted_node->GetParent();
         SetNode<K>* previous_node = inserted_node;
@@ -1328,8 +1365,10 @@ private:
             if (current_node->GetLeft().get() == previous_node) {
                 ++(current_node->GetBalance());
             } else {
+                assert(current_node->GetRight().get() == previous_node);
                 --(current_node->GetBalance());
             }
+            assert(IsBalanceNormal(current_node));
             if (current_node->GetBalance() == 0) {
                 return;
             }
@@ -1337,6 +1376,7 @@ private:
                 previous_node = current_node;
                 current_node = current_node->GetParent();
             } else {
+                assert(std::abs(current_node->GetBalance()) == 2);
                 std::unique_ptr<SetNode<K>>& current_node_smart = GetNodeUn(current_node);
                 if (LeftRotateNeeded(current_node)) {
                     current_node = RotateLeft(current_node_smart);
@@ -1346,10 +1386,13 @@ private:
                     current_node = RotateRightLeft(current_node_smart);
                 } else if (LeftRightRotateNeeded(current_node)) {
                     current_node = RotateLeftRight(current_node_smart);
+                } else {
+                    assert(false);
                 }
                 if (current_node->GetBalance() == 0) {
                     return;
                 } else {
+                    assert(std::abs(current_node->GetBalance()) == 1);
                     previous_node = current_node;
                     current_node = current_node->GetParent();
                 }
@@ -1398,8 +1441,10 @@ size_t CalcNodeHeight(const SetNode<K>* node) {
     return 1 + std::max(left_height, right_height);
 }
 
+// Helper function to check AVL height bound
 bool CheckAVLHeightBound(size_t size, size_t height) {
-    const double phi = (1.0 + std::sqrt(5.0)) / 2.0;
+    const double phi = (1.0 + std::sqrt(5.0)) / 2.0;  // Golden ratio ≈ 1.6180339887
+    // Maximum height: h ≤ log_φ(√5 * (n + 1 + √5/2)) - 2
     double max_height =
         std::log(std::sqrt(5.0) * (size + 1 + std::sqrt(5.0) / 2.0)) / std::log(phi) - 2.0;
     return static_cast<double>(height) <= max_height;
