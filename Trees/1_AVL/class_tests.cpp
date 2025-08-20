@@ -1,6 +1,7 @@
 #include "SetAVL.h"
 #include <cassert>
 #include <iostream>
+#include <set>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -991,6 +992,105 @@ void TestRanksForAbsentKeys() {
     std::cout << "TestRanksForAbsentKeys passed\n";
 }
 
+void TestOperatorEqual() {
+    std::mt19937 gen(123);
+    for (int trial = 0; trial < 50; ++trial) {
+        auto input1 = GenerateRandomVector(100, -1000, 1000, gen());
+        auto input2 = GenerateRandomVector(100, -1000, 1000, gen());
+
+        SetAVL<int> set1, set2;
+        std::set<int> stdset1, stdset2;
+
+        for (int v : input1) {
+            set1.Insert(v);
+            stdset1.insert(v);
+        }
+        for (int v : input2) {
+            set2.Insert(v);
+            stdset2.insert(v);
+        }
+
+        bool expected_equal = (stdset1 == stdset2);
+
+        // Cross-check
+        assert((set1 == set2) == expected_equal);
+        assert((set1 != set2) == !expected_equal);
+    }
+    std::cout << "TestOperatorEqualStress passed\n";
+}
+
+void TestOperatorNotEqual() {
+    std::mt19937 gen(321);
+    for (int trial = 0; trial < 50; ++trial) {
+        auto input1 = GenerateRandomVector(50, -500, 500, gen());
+        auto input2 = GenerateRandomVector(50, -500, 500, gen());
+
+        SetAVL<int> set1, set2;
+        std::set<int> stdset1, stdset2;
+
+        for (int v : input1) {
+            set1.Insert(v);
+            stdset1.insert(v);
+        }
+        for (int v : input2) {
+            set2.Insert(v);
+            stdset2.insert(v);
+        }
+
+        bool expected_not_equal = (stdset1 != stdset2);
+
+        assert((set1 != set2) == expected_not_equal);
+        assert((set1 == set2) == !expected_not_equal);
+    }
+    std::cout << "TestOperatorNotEqualStress passed\n";
+}
+
+void TestSwapOuter() {
+    std::mt19937 gen(456);
+    for (int trial = 0; trial < 50; ++trial) {
+        auto input1 = GenerateRandomVector(50, -500, 500, gen());
+        auto input2 = GenerateRandomVector(50, -500, 500, gen());
+
+        SetAVL<int> set1, set2;
+        std::set<int> stdset1, stdset2;
+
+        for (int v : input1) {
+            set1.Insert(v);
+            stdset1.insert(v);
+        }
+        for (int v : input2) {
+            set2.Insert(v);
+            stdset2.insert(v);
+        }
+
+        // Expected swap using std::set
+        auto expected1 = stdset1;
+        auto expected2 = stdset2;
+        expected1.swap(expected2);
+
+        Swap(set1, set2);
+
+        // Compare set1 with expected1
+        auto it1 = set1.Begin();
+        for (int v : expected1) {
+            assert(it1 != set1.End());
+            assert(*it1 == v);
+            ++it1;
+        }
+        assert(it1 == set1.End());
+
+        // Compare set2 with expected2
+        auto it2 = set2.Begin();
+        for (int v : expected2) {
+            assert(it2 != set2.End());
+            assert(*it2 == v);
+            ++it2;
+        }
+        assert(it2 == set2.End());
+    }
+    std::cout << "TestSwapStress passed\n";
+}
+
 void TestLogarithmicAVLHeightProperty() {
     SetAVL<int> empty_set;
     size_t height = CalcNodeHeight(empty_set.GetRootPtr());
@@ -1096,6 +1196,9 @@ int main() {
     TestReverseIterators();
     TestSingleElement();
     TestRanksForAbsentKeys();
+    TestOperatorEqual();
+    TestOperatorNotEqual();
+    TestSwapOuter();
     TestLogarithmicAVLHeightProperty();
 
     std::cout << "\nAll tests passed\n";

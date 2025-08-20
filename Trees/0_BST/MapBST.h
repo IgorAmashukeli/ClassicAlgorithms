@@ -47,7 +47,7 @@ public:
     virtual size_t& GetSize() = 0;
     virtual const std::pair<const K, V>& GetKeyValue() const = 0;
     virtual std::pair<const K, V>& GetKeyValue() = 0;
-    virtual bool IsEndMapNode() const noexcept = 0;
+    virtual bool IsMapEndNode() const noexcept = 0;
 };
 
 template <typename K, typename V>
@@ -127,7 +127,7 @@ public:
     std::pair<const K, V>& GetKeyValue() noexcept {
         return key_value_;
     }
-    bool IsEndMapNode() const noexcept {
+    bool IsMapEndNode() const noexcept {
         return false;
     }
 
@@ -143,7 +143,7 @@ private:
 
 template <typename K, typename V>
 class EndMapNode : public MapBaseNode<K, V> {
-
+public:
     EndMapNode() noexcept = default;
     EndMapNode(const EndMapNode& other) = delete;
     EndMapNode& operator=(const EndMapNode& other) = delete;
@@ -205,7 +205,7 @@ class EndMapNode : public MapBaseNode<K, V> {
     std::pair<const K, V>& GetKeyValue() {
         throw std::out_of_range("Out of range!");
     }
-    bool IsEndMapNode() const noexcept {
+    bool IsMapEndNode() const noexcept {
         return true;
     }
 
@@ -269,12 +269,14 @@ public:
 
     private:
         void Inc() {
-            if (node_ != nullptr) {
+            if (node_ != nullptr && !node_->IsMapEndNode()) {
                 node_ = node_->GetNext();
+            } else {
+                node_ = nullptr;
             }
         }
         void Dec() {
-            if (node_ != nullptr && !(node_->GetPrev()->IsEndMapNode())) {
+            if (node_ != nullptr && !(node_->GetPrev()->IsMapEndNode())) {
                 node_ = node_->GetPrev();
             } else {
                 node_ = nullptr;
@@ -323,12 +325,14 @@ public:
 
     private:
         void Inc() {
-            if (node_ != nullptr) {
+            if (node_ != nullptr && !node_->IsMapEndNode()) {
                 node_ = node_->GetNext();
+            } else {
+                node_ = nullptr;
             }
         }
         void Dec() {
-            if (node_ != nullptr && !(node_->GetPrev()->IsEndMapNode())) {
+            if (node_ != nullptr && !(node_->GetPrev()->IsMapEndNode())) {
                 node_ = node_->GetPrev();
             } else {
                 node_ = nullptr;
@@ -376,12 +380,14 @@ public:
 
     private:
         void Inc() {
-            if (node_ != nullptr) {
+            if (node_ != nullptr && !node_->IsMapEndNode()) {
                 node_ = node_->GetPrev();
+            } else {
+                node_ = nullptr;
             }
         }
         void Dec() {
-            if (node_ != nullptr && !(node_->GetNext()->IsEndMapNode())) {
+            if (node_ != nullptr && !(node_->GetNext()->IsMapEndNode())) {
                 node_ = node_->GetNext();
             } else {
                 node_ = nullptr;
@@ -429,12 +435,14 @@ public:
 
     private:
         void Inc() {
-            if (node_ != nullptr) {
+            if (node_ != nullptr && !node_->IsMapEndNode()) {
                 node_ = node_->GetPrev();
+            } else {
+                node_ = nullptr;
             }
         }
         void Dec() {
-            if (node_ != nullptr && !(node_->GetNext()->IsEndMapNode())) {
+            if (node_ != nullptr && !(node_->GetNext()->IsMapEndNode())) {
                 node_ = node_->GetNext();
             } else {
                 node_ = nullptr;
@@ -473,10 +481,8 @@ public:
 
     void Clear() noexcept {
         GetRoot() = nullptr;
-        rend_node_.GetPrev() = nullptr;
-        rend_node_.GetNext() = std::addressof(end_node_);
-        end_node_.GetNext() = nullptr;
-        end_node_.GetPrev() = std::addressof(rend_node_);
+        end_node_.GetNext() = std::addressof(end_node_);
+        end_node_.GetPrev() = std::addressof(end_node_);
     }
     void Swap(MapBST& other) {
         std::swap(GetRoot(), other.GetRoot());
@@ -544,7 +550,7 @@ public:
         if (node == nullptr) {
             return End();
         }
-        if (Equivalent(node->GetKey(), key)) {
+        if (Equivalent(node->GetKey(), key, KeyCompare())) {
             return ConstIterator{node->GetNext()};
         }
         return ConstIterator{node};
@@ -564,7 +570,7 @@ public:
         if (node == nullptr) {
             return {End(), End()};
         }
-        if (Equivalent(node->GetKey(), key)) {
+        if (Equivalent(node->GetKey(), key, KeyCompare())) {
             return {ConstIterator{node}, ConstIterator{node->GetNext()}};
         }
         return {ConstIterator{node}, ConstIterator{node}};
@@ -576,10 +582,10 @@ public:
         return static_cast<size_t>(Contains(key));
     }
     Iterator Begin() noexcept {
-        return Iterator{rend_node_.GetNext()};
+        return Iterator{end_node_.GetNext()};
     }
     ConstIterator Begin() const noexcept {
-        return ConstIterator{rend_node_.GetNext()};
+        return ConstIterator{end_node_.GetNext()};
     }
     Iterator End() noexcept {
         return Iterator{std::addressof(end_node_)};
@@ -588,7 +594,7 @@ public:
         return ConstIterator{std::addressof(end_node_)};
     }
     ConstIterator CBegin() const noexcept {
-        return ConstIterator{rend_node_.GetNext()};
+        return ConstIterator{end_node_.GetNext()};
     }
     ConstIterator CEnd() const noexcept {
         return ConstIterator{std::addressof(end_node_)};
@@ -600,16 +606,16 @@ public:
         return ConstReverseIterator{end_node_.GetPrev()};
     }
     ReverseIterator REnd() noexcept {
-        return ReverseIterator{std::addressof(rend_node_)};
+        return ReverseIterator{std::addressof(end_node_)};
     }
     ConstReverseIterator REnd() const noexcept {
-        return ConstReverseIterator{std::addressof(rend_node_)};
+        return ConstReverseIterator{std::addressof(end_node_)};
     }
     ConstReverseIterator CRBegin() const noexcept {
         return ConstReverseIterator{end_node_.GetPrev()};
     }
     ConstReverseIterator CREnd() const noexcept {
-        return ConstReverseIterator{std::addressof(rend_node_)};
+        return ConstReverseIterator{std::addressof(end_node_)};
     }
 
     size_t Size() const noexcept {
@@ -673,15 +679,46 @@ private:
     }
 
     void ConnectEndMapNodesAfterSwap(MapBST& other) {
-        if (GetRoot() != nullptr) {
-            std::swap(rend_node_.GetNext(), other.rend_node_.GetNext());
-            rend_node_.GetNext()->GetPrev() = std::addressof(rend_node_);
-            other.rend_node_.GetNext()->GetPrev() = std::addressof(other.rend_node_);
-
-            std::swap(end_node_.GetPrev(), other.end_node_.GetPrev());
-            end_node_.GetPrev()->GetNext() = std::addressof(end_node_);
-            other.end_node_.GetPrev()->GetNext() = std::addressof(other.end_node_);
+        if (Empty() && other.Empty()) {
+            return;
         }
+
+        auto other_min_node = end_node_.GetNext();
+        auto other_max_node = end_node_.GetPrev();
+        auto min_node = other.end_node_.GetNext();
+        auto max_node = other.end_node_.GetPrev();
+
+        if (Empty() && !other.Empty()) {
+            other.end_node_.GetPrev() = other_max_node;
+            other.end_node_.GetNext() = other_min_node;
+            other_max_node->GetNext() = std::addressof(other.end_node_);
+            other_min_node->GetPrev() = std::addressof(other.end_node_);
+
+            end_node_.GetPrev() = std::addressof(end_node_);
+            end_node_.GetNext() = std::addressof(end_node_);
+            return;
+        }
+
+        if (!Empty() && other.Empty()) {
+            end_node_.GetPrev() = max_node;
+            end_node_.GetNext() = min_node;
+            max_node->GetNext() = std::addressof(end_node_);
+            min_node->GetPrev() = std::addressof(end_node_);
+
+            other.end_node_.GetPrev() = std::addressof(other.end_node_);
+            other.end_node_.GetNext() = std::addressof(other.end_node_);
+            return;
+        }
+
+        end_node_.GetPrev() = max_node;
+        end_node_.GetNext() = min_node;
+        max_node->GetNext() = std::addressof(end_node_);
+        min_node->GetPrev() = std::addressof(end_node_);
+
+        other.end_node_.GetPrev() = other_max_node;
+        other.end_node_.GetNext() = other_min_node;
+        other_max_node->GetNext() = std::addressof(other.end_node_);
+        other_min_node->GetPrev() = std::addressof(other.end_node_);
     }
 
     void ConnectEndMapNodesAfterCopy(MapBaseNode<K, V>* max_node) {
@@ -844,7 +881,7 @@ private:
         if (other.Empty()) {
             return nullptr;
         }
-        MapBaseNode<K, V>* prev_node = std::addressof(rend_node_);
+        MapBaseNode<K, V>* prev_node = std::addressof(end_node_);
         std::stack<std::tuple<MapNode<K, V>*, bool, bool>> other_nodes;
         std::stack<std::unique_ptr<MapNode<K, V>>> nodes;
         other_nodes.push({other.GetRootPtr(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
@@ -873,24 +910,18 @@ private:
         }
     }
 
-    ConstIterator Select(size_t i) const {
-    }
-
-    size_t Rank(const K& key) const {
-    }
-
     template <typename P>
     std::pair<Iterator, bool> InsertMapNode(P&& key_value) {
         MapNode<K, V>* node = GetRootPtr();
         MapNode<K, V>* parent = nullptr;
         bool left = false;
-        MapBaseNode<K, V>* current_prev = std::addressof(rend_node_);
+        MapBaseNode<K, V>* current_prev = std::addressof(end_node_);
         MapBaseNode<K, V>* current_next = std::addressof(end_node_);
 
         while (true) {
             if ((node == nullptr) && (parent == nullptr)) {
                 GetRoot() = std::make_unique<MapNode<K, V>>(std::forward<P>(key_value),
-                                                            std::addressof(rend_node_),
+                                                            std::addressof(end_node_),
                                                             std::addressof(end_node_), 1);
                 ConnectPrevNext(GetRootPtr(), current_prev, current_next);
                 return {Iterator(GetRootPtr()), true};
@@ -929,8 +960,7 @@ private:
     }
 
     CompressedPair<std::unique_ptr<MapNode<K, V>>, Compare> root_compare_;
-    EndMapNode<K, V> rend_node_{nullptr, std::addressof(end_node_)};
-    EndMapNode<K, V> end_node_{std::addressof(rend_node_), nullptr};
+    EndMapNode<K, V> end_node_{std::addressof(end_node_), std::addressof(end_node_)};
 };
 
 template <typename K, typename V, typename Compare>
@@ -950,7 +980,7 @@ bool operator==(const MapBST<K, V, Compare>& lhs, const MapBST<K, V, Compare>& r
 }
 
 template <typename K, typename V, typename Compare>
-void Swap(const MapBST<K, V, Compare>& lhs, const MapBST<K, V, Compare>& rhs) {
+void Swap(MapBST<K, V, Compare>& lhs, MapBST<K, V, Compare>& rhs) {
     lhs.Swap(rhs);
 }
 

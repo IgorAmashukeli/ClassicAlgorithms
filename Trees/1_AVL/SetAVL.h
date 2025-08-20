@@ -1460,7 +1460,7 @@ bool operator==(const SetAVL<K, Compare>& lhs, const SetAVL<K, Compare>& rhs) {
 }
 
 template <typename K, typename Compare>
-void Swap(const SetAVL<K, Compare>& lhs, const SetAVL<K, Compare>& rhs) {
+void Swap(SetAVL<K, Compare>& lhs, SetAVL<K, Compare>& rhs) {
     lhs.Swap(rhs);
 }
 
