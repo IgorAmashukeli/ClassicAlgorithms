@@ -1061,6 +1061,7 @@ void TestLogarithmicAVLHeightProperty() {
 }
 
 int main() {
+
     TestDefaultConstructor();
     TestComparatorConstructor();
     TestCopyConstructor();

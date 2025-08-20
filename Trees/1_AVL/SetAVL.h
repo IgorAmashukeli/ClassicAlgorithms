@@ -253,8 +253,10 @@ public:
 
     private:
         void Inc() {
-            if (node_ != nullptr) {
+            if (node_ != nullptr && !node_->IsSetEndNode()) {
                 node_ = node_->GetNext();
+            } else {
+                node_ = nullptr;
             }
         }
         void Dec() {
@@ -264,6 +266,7 @@ public:
                 node_ = nullptr;
             }
         }
+
         SetBaseNode<K>* node_ = nullptr;
     };
 
@@ -306,8 +309,10 @@ public:
 
     private:
         void Inc() {
-            if (node_ != nullptr) {
+            if (node_ != nullptr && !node_->IsSetEndNode()) {
                 node_ = node_->GetNext();
+            } else {
+                node_ = nullptr;
             }
         }
         void Dec() {
@@ -361,8 +366,10 @@ public:
 
     private:
         void Inc() {
-            if (node_ != nullptr) {
+            if (node_ != nullptr && !node_->IsSetEndNode()) {
                 node_ = node_->GetPrev();
+            } else {
+                node_ = nullptr;
             }
         }
         void Dec() {
@@ -414,8 +421,10 @@ public:
 
     private:
         void Inc() {
-            if (node_ != nullptr) {
+            if (node_ != nullptr && !node_->IsSetEndNode()) {
                 node_ = node_->GetPrev();
+            } else {
+                node_ = nullptr;
             }
         }
         void Dec() {
@@ -450,10 +459,8 @@ public:
 
     void Clear() noexcept {
         GetRoot() = nullptr;
-        rend_node_.GetPrev() = nullptr;
-        rend_node_.GetNext() = std::addressof(end_node_);
-        end_node_.GetNext() = nullptr;
-        end_node_.GetPrev() = std::addressof(rend_node_);
+        end_node_.GetNext() = std::addressof(end_node_);
+        end_node_.GetPrev() = std::addressof(end_node_);
     }
     void Swap(SetAVL& other) {
         std::swap(GetRoot(), other.GetRoot());
@@ -574,10 +581,10 @@ public:
         return static_cast<size_t>(Contains(key));
     }
     Iterator Begin() noexcept {
-        return Iterator{rend_node_.GetNext()};
+        return Iterator{end_node_.GetNext()};
     }
     ConstIterator Begin() const noexcept {
-        return ConstIterator{rend_node_.GetNext()};
+        return ConstIterator{end_node_.GetNext()};
     }
     Iterator End() noexcept {
         return Iterator{std::addressof(end_node_)};
@@ -586,7 +593,7 @@ public:
         return ConstIterator{std::addressof(end_node_)};
     }
     ConstIterator CBegin() const noexcept {
-        return ConstIterator{rend_node_.GetNext()};
+        return ConstIterator{end_node_.GetNext()};
     }
     ConstIterator CEnd() const noexcept {
         return ConstIterator{std::addressof(end_node_)};
@@ -598,16 +605,16 @@ public:
         return ConstReverseIterator{end_node_.GetPrev()};
     }
     ReverseIterator REnd() noexcept {
-        return ReverseIterator{std::addressof(rend_node_)};
+        return ReverseIterator{std::addressof(end_node_)};
     }
     ConstReverseIterator REnd() const noexcept {
-        return ConstReverseIterator{std::addressof(rend_node_)};
+        return ConstReverseIterator{std::addressof(end_node_)};
     }
     ConstReverseIterator CRBegin() const noexcept {
         return ConstReverseIterator{end_node_.GetPrev()};
     }
     ConstReverseIterator CREnd() const noexcept {
-        return ConstReverseIterator{std::addressof(rend_node_)};
+        return ConstReverseIterator{std::addressof(end_node_)};
     }
 
     Iterator SelectInd0(size_t i) {
@@ -742,15 +749,47 @@ private:
     }
 
     void ConnectSetEndNodesAfterSwap(SetAVL& other) {
-        if (GetRoot() != nullptr) {
-            std::swap(rend_node_.GetNext(), other.rend_node_.GetNext());
-            rend_node_.GetNext()->GetPrev() = std::addressof(rend_node_);
-            other.rend_node_.GetNext()->GetPrev() = std::addressof(other.rend_node_);
 
-            std::swap(end_node_.GetPrev(), other.end_node_.GetPrev());
-            end_node_.GetPrev()->GetNext() = std::addressof(end_node_);
-            other.end_node_.GetPrev()->GetNext() = std::addressof(other.end_node_);
+        if (Empty() && other.Empty()) {
+            return;
         }
+
+        auto other_min_node = end_node_.GetNext();
+        auto other_max_node = end_node_.GetPrev();
+        auto min_node = other.end_node_.GetNext();
+        auto max_node = other.end_node_.GetPrev();
+
+        if (Empty() && !other.Empty()) {
+            other.end_node_.GetPrev() = other_max_node;
+            other.end_node_.GetNext() = other_min_node;
+            other_max_node->GetNext() = std::addressof(other.end_node_);
+            other_min_node->GetPrev() = std::addressof(other.end_node_);
+
+            end_node_.GetPrev() = std::addressof(end_node_);
+            end_node_.GetNext() = std::addressof(end_node_);
+            return;
+        }
+
+        if (!Empty() && other.Empty()) {
+            end_node_.GetPrev() = max_node;
+            end_node_.GetNext() = min_node;
+            max_node->GetNext() = std::addressof(end_node_);
+            min_node->GetPrev() = std::addressof(end_node_);
+
+            other.end_node_.GetPrev() = std::addressof(other.end_node_);
+            other.end_node_.GetNext() = std::addressof(other.end_node_);
+            return;
+        }
+
+        end_node_.GetPrev() = max_node;
+        end_node_.GetNext() = min_node;
+        max_node->GetNext() = std::addressof(end_node_);
+        min_node->GetPrev() = std::addressof(end_node_);
+
+        other.end_node_.GetPrev() = other_max_node;
+        other.end_node_.GetNext() = other_min_node;
+        other_max_node->GetNext() = std::addressof(other.end_node_);
+        other_min_node->GetPrev() = std::addressof(other.end_node_);
     }
 
     void ConnectSetEndNodesAfterCopy(SetBaseNode<K>* max_node) {
@@ -912,7 +951,7 @@ private:
         if (other.Empty()) {
             return;
         }
-        SetBaseNode<K>* prev_node = std::addressof(rend_node_);
+        SetBaseNode<K>* prev_node = std::addressof(end_node_);
         std::stack<std::tuple<SetNode<K>*, bool, bool>> other_nodes;
         std::stack<std::unique_ptr<SetNode<K>>> nodes;
         other_nodes.push({other.GetRootPtr(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
@@ -945,12 +984,12 @@ private:
         SetNode<K>* node = GetRootPtr();
         SetNode<K>* parent = nullptr;
         bool left = false;
-        SetBaseNode<K>* current_prev = std::addressof(rend_node_);
+        SetBaseNode<K>* current_prev = std::addressof(end_node_);
         SetBaseNode<K>* current_next = std::addressof(end_node_);
 
         while (true) {
             if ((node == nullptr) && (parent == nullptr)) {
-                GetRoot() = std::make_unique<SetNode<K>>(key, std::addressof(rend_node_),
+                GetRoot() = std::make_unique<SetNode<K>>(key, std::addressof(end_node_),
                                                          std::addressof(end_node_), 1, 0);
                 ConnectPrevNext(GetRootPtr(), current_prev, current_next);
                 return {GetRootPtr(), true};
@@ -989,12 +1028,12 @@ private:
         SetNode<K>* node = GetRootPtr();
         SetNode<K>* parent = nullptr;
         bool left = false;
-        SetBaseNode<K>* current_prev = std::addressof(rend_node_);
+        SetBaseNode<K>* current_prev = std::addressof(end_node_);
         SetBaseNode<K>* current_next = std::addressof(end_node_);
 
         while (true) {
             if ((node == nullptr) && (parent == nullptr)) {
-                GetRoot() = std::make_unique<SetNode<K>>(std::move(key), std::addressof(rend_node_),
+                GetRoot() = std::make_unique<SetNode<K>>(std::move(key), std::addressof(end_node_),
                                                          std::addressof(end_node_), 1, 0);
                 ConnectPrevNext(GetRootPtr(), current_prev, current_next);
                 return {GetRootPtr(), true};
@@ -1036,13 +1075,13 @@ private:
         SetNode<K>* node = GetRootPtr();
         SetNode<K>* parent = nullptr;
         bool left = false;
-        SetBaseNode<K>* current_prev = std::addressof(rend_node_);
+        SetBaseNode<K>* current_prev = std::addressof(end_node_);
         SetBaseNode<K>* current_next = std::addressof(end_node_);
 
         while (true) {
             if ((node == nullptr) && (parent == nullptr)) {
                 GetRoot() =
-                    std::make_unique<SetNode<K>>(std::forward<P>(key), std::addressof(rend_node_),
+                    std::make_unique<SetNode<K>>(std::forward<P>(key), std::addressof(end_node_),
                                                  std::addressof(end_node_), 1, 0);
                 ConnectPrevNext(GetRootPtr(), current_prev, current_next);
                 return {GetRootPtr(), true};
@@ -1401,8 +1440,7 @@ private:
     }
 
     CompressedPair<std::unique_ptr<SetNode<K>>, Compare> root_compare_;
-    SetEndNode<K> rend_node_{nullptr, std::addressof(end_node_)};
-    SetEndNode<K> end_node_{std::addressof(rend_node_), nullptr};
+    SetEndNode<K> end_node_{std::addressof(end_node_), std::addressof(end_node_)};
 };
 
 template <typename K, typename Compare>
@@ -1428,7 +1466,7 @@ void Swap(const SetAVL<K, Compare>& lhs, const SetAVL<K, Compare>& rhs) {
 
 template <typename K, typename Compare>
 bool operator!=(const SetAVL<K, Compare>& lhs, const SetAVL<K, Compare>& rhs) {
-    return (lhs != rhs);
+    return !(lhs == rhs);
 }
 
 template <typename K>
