@@ -576,32 +576,6 @@ public:
         return ConstReverseIterator{std::addressof(end_node_)};
     }
 
-    Iterator SelectInd0(size_t i) {
-        return SelectInd1(i + 1);
-    }
-    ConstIterator SelectInd0(size_t i) const {
-        return SelectInd1(i + 1);
-    }
-    Iterator SelectInd1(size_t i) {
-        if (i > Size()) {
-            return End();
-        }
-        return Iterator(SelectNode(i));
-    }
-    ConstIterator SelectInd1(size_t i) const {
-        if (i > Size()) {
-            return End();
-        }
-        return ConstIterator(SelectNode(i));
-    }
-
-    size_t RankInd1(const K& key) const {
-        return RankKey(key);
-    }
-    size_t RankInd0(const K& key) const {
-        return RankInd1(key) - 1;
-    }
-
     size_t Size() const noexcept {
         if (GetRoot() == nullptr) {
             return 0;
@@ -893,96 +867,6 @@ private:
         }
     }
 
-    std::pair<Iterator, bool> InsertSetNode(const SetType& key) {
-        SetNode<K>* node = GetRootPtr();
-        SetNode<K>* parent = nullptr;
-        bool left = false;
-        SetBaseNode<K>* current_prev = std::addressof(end_node_);
-        SetBaseNode<K>* current_next = std::addressof(end_node_);
-
-        while (true) {
-            if ((node == nullptr) && (parent == nullptr)) {
-                GetRoot() = std::make_unique<SetNode<K>>(key, std::addressof(end_node_),
-                                                         std::addressof(end_node_), 1);
-                ConnectPrevNext(GetRootPtr(), current_prev, current_next);
-                return {Iterator(GetRootPtr()), true};
-            }
-            if ((node == nullptr) && (parent != nullptr) && left) {
-                parent->GetLeft() = std::make_unique<SetNode<K>>(key, nullptr, nullptr, 1);
-                parent->GetLeft()->GetParent() = parent;
-                ConnectPrevNext(parent->GetLeft().get(), current_prev, current_next);
-                IncreaseSizeInBranch(parent);
-                return {Iterator(parent->GetLeft().get()), true};
-            }
-            if ((node == nullptr) && (parent != nullptr) && !left) {
-                parent->GetRight() = std::make_unique<SetNode<K>>(key, nullptr, nullptr, 1);
-                parent->GetRight()->GetParent() = parent;
-                ConnectPrevNext(parent->GetRight().get(), current_prev, current_next);
-                IncreaseSizeInBranch(parent);
-                return {Iterator(parent->GetRight().get()), true};
-            }
-            if ((node != nullptr) && Equivalent(node->GetKey(), key, KeyCompare())) {
-                return {Iterator(node), false};
-            }
-            if ((node != nullptr) && (KeyCompare()(key, node->GetKey()))) {
-                left = true;
-                parent = node;
-                current_next = node;
-                node = node->GetLeft().get();
-            } else {
-                left = false;
-                parent = node;
-                current_prev = node;
-                node = node->GetRight().get();
-            }
-        }
-    }
-    std::pair<Iterator, bool> InsertSetNode(SetType&& key) {
-        SetNode<K>* node = GetRootPtr();
-        SetNode<K>* parent = nullptr;
-        bool left = false;
-        SetBaseNode<K>* current_prev = std::addressof(end_node_);
-        SetBaseNode<K>* current_next = std::addressof(end_node_);
-
-        while (true) {
-            if ((node == nullptr) && (parent == nullptr)) {
-                GetRoot() = std::make_unique<SetNode<K>>(std::move(key), std::addressof(end_node_),
-                                                         std::addressof(end_node_), 1);
-                ConnectPrevNext(GetRootPtr(), current_prev, current_next);
-                return {Iterator(GetRootPtr()), true};
-            }
-            if ((node == nullptr) && (parent != nullptr) && left) {
-                parent->GetLeft() =
-                    std::make_unique<SetNode<K>>(std::move(key), nullptr, nullptr, 1);
-                parent->GetLeft()->GetParent() = parent;
-                ConnectPrevNext(parent->GetLeft().get(), current_prev, current_next);
-                IncreaseSizeInBranch(parent);
-                return {Iterator(parent->GetLeft().get()), true};
-            }
-            if ((node == nullptr) && (parent != nullptr) && !left) {
-                parent->GetRight() =
-                    std::make_unique<SetNode<K>>(std::move(key), nullptr, nullptr, 1);
-                parent->GetRight()->GetParent() = parent;
-                ConnectPrevNext(parent->GetRight().get(), current_prev, current_next);
-                IncreaseSizeInBranch(parent);
-                return {Iterator(parent->GetRight().get()), true};
-            }
-            if ((node != nullptr) && Equivalent(node->GetKey(), key, KeyCompare())) {
-                return {Iterator(node), false};
-            }
-            if ((node != nullptr) && (KeyCompare()(key, node->GetKey()))) {
-                left = true;
-                parent = node;
-                current_next = node;
-                node = node->GetLeft().get();
-            } else {
-                left = false;
-                parent = node;
-                current_prev = node;
-                node = node->GetRight().get();
-            }
-        }
-    }
     template <typename P>
     std::pair<Iterator, bool> InsertSetNode(P&& key) {
         SetNode<K>* node = GetRootPtr();
@@ -1029,48 +913,6 @@ private:
                 node = node->GetRight().get();
             }
         }
-    }
-
-    size_t GetNumInSubTree(SetNode<K>* node) const {
-        if (node == nullptr || node->GetLeft() == nullptr) {
-            return 1;
-        }
-        return (node->GetLeft()->GetSize() + 1);
-    }
-
-    SetNode<K>* SelectNode(size_t i) const {
-        SetNode<K>* node = GetRootPtr();
-        size_t current_size = GetNumInSubTree(node);
-        while (current_size != i) {
-            if (i < current_size) {
-                node = node->GetLeft().get();
-            } else {
-                node = node->GetRight().get();
-                i -= current_size;
-            }
-            current_size = GetNumInSubTree(node);
-        }
-        return node;
-    }
-
-    size_t RankKey(const K& key) const {
-        SetNode<K>* node = GetRootPtr();
-        size_t current_size = GetNumInSubTree(node);
-
-        while (node != nullptr) {
-            if (Equivalent(key, node->GetKey(), KeyCompare())) {
-                return current_size;
-            }
-            if (KeyCompare()(key, node->GetKey())) {
-                size_t parent_size = GetNumInSubTree(node);
-                node = node->GetLeft().get();
-                current_size = current_size - parent_size + GetNumInSubTree(node);
-            } else {
-                node = node->GetRight().get();
-                current_size += GetNumInSubTree(node);
-            }
-        }
-        return current_size;
     }
 
     CompressedPair<std::unique_ptr<SetNode<K>>, Compare> root_compare_;

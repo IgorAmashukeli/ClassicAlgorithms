@@ -564,42 +564,6 @@ void TestKeyCompare() {
     std::cout << "TestKeyCompare passed\n";
 }
 
-void TestOrderStatisticsBasic() {
-    auto input = GenerateRandomVector(100, -1000, 1000, 61);
-    SetBST<int> set_avl;
-    for (int val : input) {
-        set_avl.Insert(val);
-    }
-    std::vector<int> sorted_unique = input;
-    std::sort(sorted_unique.begin(), sorted_unique.end());
-    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
-                        sorted_unique.end());
-
-    const auto& const_set = set_avl;
-    for (size_t i = 0; i < sorted_unique.size(); ++i) {
-        auto it0 = set_avl.SelectInd0(i);
-        assert(*it0 == sorted_unique[i]);
-        auto it1 = set_avl.SelectInd1(i + 1);
-        assert(*it1 == sorted_unique[i]);
-        auto cit0 = const_set.SelectInd0(i);
-        assert(*cit0 == sorted_unique[i]);
-        auto cit1 = const_set.SelectInd1(i + 1);
-        assert(*cit1 == sorted_unique[i]);
-        assert(set_avl.RankInd0(sorted_unique[i]) == i);
-        assert(set_avl.RankInd1(sorted_unique[i]) == i + 1);
-    }
-    std::mt19937 gen(61);
-    std::uniform_int_distribution<> dis(1001, 2000);
-    for (int i = 0; i < 10; ++i) {
-        int key = dis(gen);
-        auto lb = std::lower_bound(sorted_unique.begin(), sorted_unique.end(), key);
-        size_t expected_rank = lb - sorted_unique.begin();
-        assert(set_avl.RankInd0(key) == expected_rank);
-        assert(set_avl.RankInd1(key) == expected_rank + 1);
-    }
-    std::cout << "TestOrderStatisticsBasic passed\n";
-}
-
 void TestWithCustomCompare() {
     auto input = GenerateRandomVector(100, -1000, 1000, 62);
     SetBST<int, std::greater<int>> set_avl{std::greater<int>()};
@@ -662,7 +626,6 @@ void TestWithComplexKeys() {
         assert(it != set_avl.End());
         assert(it->x == sorted_unique[i].x && it->y == sorted_unique[i].y);
         assert(set_avl.Contains(sorted_unique[i]));
-        assert(set_avl.RankInd0(sorted_unique[i]) == i);
         ++it;
     }
     assert(it == set_avl.End());
@@ -729,13 +692,6 @@ void TestLargeTree() {
         ++it;
     }
     assert(it == large_set.End());
-    for (size_t i = 0; i < 100; ++i) {
-        size_t idx = i * (sorted_unique.size() / 100);
-        assert(*large_set.SelectInd0(idx) == sorted_unique[idx]);
-        assert(*large_set.SelectInd1(idx + 1) == sorted_unique[idx]);
-        assert(large_set.RankInd0(sorted_unique[idx]) == idx);
-        assert(large_set.RankInd1(sorted_unique[idx]) == idx + 1);
-    }
     std::cout << "TestLargeTree passed\n";
 }
 
@@ -760,10 +716,6 @@ void TestEdgeCases() {
 
     set_avl.Clear();
     set_avl.Insert(1);
-    assert(set_avl.RankInd0(0) == 0);
-    assert(set_avl.RankInd1(0) == 1);
-    assert(set_avl.RankInd0(2) == 1);
-    assert(set_avl.RankInd1(2) == 2);
 
     assert(set_avl.MaxSize() > 0);
 
@@ -772,33 +724,6 @@ void TestEdgeCases() {
     assert(set_avl.Empty());
     assert(empty_swap.Size() == 1);
     std::cout << "TestEdgeCases passed\n";
-}
-
-void TestOrderStatisticsWithCustomCompare() {
-    auto input = GenerateRandomVector(100, -1000, 1000, 67);
-    SetBST<int, std::greater<int>> set_avl{std::greater<int>()};
-    for (int val : input) {
-        set_avl.Insert(val);
-    }
-    std::vector<int> sorted_unique = input;
-    std::sort(sorted_unique.begin(), sorted_unique.end(), std::greater<int>());
-    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
-                        sorted_unique.end());
-
-    const auto& const_set = set_avl;
-    for (size_t i = 0; i < sorted_unique.size(); ++i) {
-        auto it0 = set_avl.SelectInd0(i);
-        assert(*it0 == sorted_unique[i]);
-        auto it1 = set_avl.SelectInd1(i + 1);
-        assert(*it1 == sorted_unique[i]);
-        auto cit0 = const_set.SelectInd0(i);
-        assert(*cit0 == sorted_unique[i]);
-        auto cit1 = const_set.SelectInd1(i + 1);
-        assert(*cit1 == sorted_unique[i]);
-        assert(set_avl.RankInd0(sorted_unique[i]) == i);
-        assert(set_avl.RankInd1(sorted_unique[i]) == i + 1);
-    }
-    std::cout << "TestOrderStatisticsWithCustomCompare passed\n";
 }
 
 void TestBoundsWithCustomCompare() {
@@ -854,56 +779,6 @@ void TestBoundsWithCustomCompare() {
     std::cout << "TestBoundsWithCustomCompare passed\n";
 }
 
-void TestConsistency() {
-    auto input = GenerateRandomVector(100, -1000, 1000, 69);
-    SetBST<int> set_avl;
-    for (int val : input) {
-        set_avl.Insert(val);
-    }
-    std::vector<int> sorted_unique = input;
-    std::sort(sorted_unique.begin(), sorted_unique.end());
-    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
-                        sorted_unique.end());
-
-    size_t sz = set_avl.Size();
-    auto expected_it = set_avl.Begin();
-    for (size_t i = 0; i < sz; ++i) {
-        auto selected0 = set_avl.SelectInd0(i);
-        assert(*selected0 == *expected_it);
-        auto selected1 = set_avl.SelectInd1(i + 1);
-        assert(*selected1 == *expected_it);
-        assert(set_avl.RankInd0(*expected_it) == i);
-        assert(set_avl.RankInd1(*expected_it) == i + 1);
-        ++expected_it;
-    }
-    std::cout << "TestConsistency passed\n";
-}
-
-void TestConsistencyWithCustomCompare() {
-    auto input = GenerateRandomVector(100, -1000, 1000, 70);
-    SetBST<int, std::greater<int>> set_avl{std::greater<int>()};
-    for (int val : input) {
-        set_avl.Insert(val);
-    }
-    std::vector<int> sorted_unique = input;
-    std::sort(sorted_unique.begin(), sorted_unique.end(), std::greater<int>());
-    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
-                        sorted_unique.end());
-
-    size_t sz = set_avl.Size();
-    auto expected_it = set_avl.Begin();
-    for (size_t i = 0; i < sz; ++i) {
-        auto selected0 = set_avl.SelectInd0(i);
-        assert(*selected0 == *expected_it);
-        auto selected1 = set_avl.SelectInd1(i + 1);
-        assert(*selected1 == *expected_it);
-        assert(set_avl.RankInd0(*expected_it) == i);
-        assert(set_avl.RankInd1(*expected_it) == i + 1);
-        ++expected_it;
-    }
-    std::cout << "TestConsistencyWithCustomCompare passed\n";
-}
-
 void TestReverseIterators() {
     auto input = GenerateRandomVector(100, -1000, 1000, 71);
     SetBST<int> set_avl;
@@ -956,39 +831,7 @@ void TestSingleElement() {
     assert(set_avl.LowerBound(43) == set_avl.End());
     assert(set_avl.Contains(42));
     assert(set_avl.Count(42) == 1);
-    assert(set_avl.SelectInd0(0) == set_avl.Begin());
-    assert(*set_avl.SelectInd0(0) == 42);
-    assert(set_avl.SelectInd1(1) == set_avl.Begin());
-    assert(set_avl.RankInd0(42) == 0);
-    assert(set_avl.RankInd1(42) == 1);
-    assert(set_avl.RankInd0(41) == 0);
-    assert(set_avl.RankInd1(41) == 1);
-    assert(set_avl.RankInd0(43) == 1);
-    assert(set_avl.RankInd1(43) == 2);
     std::cout << "TestSingleElement passed\n";
-}
-
-void TestRanksForAbsentKeys() {
-    auto input = GenerateRandomVector(100, -1000, 1000, 72);
-    SetBST<int> set_avl;
-    for (int val : input) {
-        set_avl.Insert(val);
-    }
-    std::vector<int> sorted_unique = input;
-    std::sort(sorted_unique.begin(), sorted_unique.end());
-    sorted_unique.erase(std::unique(sorted_unique.begin(), sorted_unique.end()),
-                        sorted_unique.end());
-
-    std::mt19937 gen(72);
-    std::uniform_int_distribution<> dis(-1500, 1500);
-    for (int i = 0; i < 50; ++i) {
-        int key = dis(gen);
-        auto lb = std::lower_bound(sorted_unique.begin(), sorted_unique.end(), key);
-        size_t expected_rank = lb - sorted_unique.begin();
-        assert(set_avl.RankInd0(key) == expected_rank);
-        assert(set_avl.RankInd1(key) == expected_rank + 1);
-    }
-    std::cout << "TestRanksForAbsentKeys passed\n";
 }
 
 void TestOperatorEqual() {
@@ -1113,22 +956,17 @@ int main() {
     TestIterators();
     TestSizeEmptyMaxSize();
     TestKeyCompare();
-    TestOrderStatisticsBasic();
     TestWithCustomCompare();
     TestWithComplexKeys();
     TestComplexTreesAndInsertionOrders();
     TestLargeTree();
     TestEdgeCases();
-    TestOrderStatisticsWithCustomCompare();
     TestBoundsWithCustomCompare();
-    TestConsistency();
-    TestConsistencyWithCustomCompare();
     TestReverseIterators();
     TestSingleElement();
     TestOperatorEqual();
     TestOperatorNotEqual();
     TestSwapOuter();
-    TestRanksForAbsentKeys();
 
     std::cout << "\nAll tests passed\n";
 }
