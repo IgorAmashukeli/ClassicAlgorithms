@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <limits>
 #include <memory>
@@ -20,14 +21,14 @@ template <typename K, typename V>
 class MapNode;
 
 template <typename K, typename V>
-class MapBaseMapNode {
+class MapBaseNode {
 public:
-    MapBaseMapNode() noexcept = default;
-    MapBaseMapNode(const MapBaseMapNode& other) = delete;
-    MapBaseMapNode& operator=(const MapBaseMapNode& other) = delete;
-    MapBaseMapNode(MapBaseMapNode&& other) = delete;
-    MapBaseMapNode& operator=(MapBaseMapNode&& other) = delete;
-    ~MapBaseMapNode() noexcept = default;
+    MapBaseNode() noexcept = default;
+    MapBaseNode(const MapBaseNode& other) = delete;
+    MapBaseNode& operator=(const MapBaseNode& other) = delete;
+    MapBaseNode(MapBaseNode&& other) = delete;
+    MapBaseNode& operator=(MapBaseNode&& other) = delete;
+    ~MapBaseNode() noexcept = default;
 
     virtual const K& GetKey() const = 0;
     virtual const V& GetValue() const = 0;
@@ -38,10 +39,10 @@ public:
     virtual std::unique_ptr<MapNode<K, V>>& GetRight() = 0;
     virtual MapNode<K, V>* GetParent() const = 0;
     virtual MapNode<K, V>*& GetParent() = 0;
-    virtual MapBaseMapNode<K, V>* GetPrev() const noexcept = 0;
-    virtual MapBaseMapNode<K, V>*& GetPrev() noexcept = 0;
-    virtual MapBaseMapNode<K, V>* GetNext() const noexcept = 0;
-    virtual MapBaseMapNode<K, V>*& GetNext() noexcept = 0;
+    virtual MapBaseNode<K, V>* GetPrev() const noexcept = 0;
+    virtual MapBaseNode<K, V>*& GetPrev() noexcept = 0;
+    virtual MapBaseNode<K, V>* GetNext() const noexcept = 0;
+    virtual MapBaseNode<K, V>*& GetNext() noexcept = 0;
     virtual size_t GetSize() const = 0;
     virtual size_t& GetSize() = 0;
     virtual const std::pair<const K, V>& GetKeyValue() const = 0;
@@ -50,7 +51,7 @@ public:
 };
 
 template <typename K, typename V>
-class MapNode : public MapBaseMapNode<K, V> {
+class MapNode : public MapBaseNode<K, V> {
 public:
     MapNode() = default;
     MapNode(const MapNode& other) = delete;
@@ -59,20 +60,20 @@ public:
     MapNode& operator=(MapNode&& other) = delete;
     ~MapNode() = default;
 
-    MapNode(const K& key, const V& value, MapBaseMapNode<K, V>* prev, MapBaseMapNode<K, V>* next,
+    MapNode(const K& key, const V& value, MapBaseNode<K, V>* prev, MapBaseNode<K, V>* next,
             size_t size)
         : key_value_(key, value), prev_(prev), next_(next), size_(size) {
     }
-    MapNode(const std::pair<const K, V>& key_value, MapBaseMapNode<K, V>* prev,
-            MapBaseMapNode<K, V>* next, size_t size)
+    MapNode(const std::pair<const K, V>& key_value, MapBaseNode<K, V>* prev,
+            MapBaseNode<K, V>* next, size_t size)
         : key_value_(key_value), prev_(prev), next_(next), size_(size) {
     }
-    MapNode(std::pair<const K, V>&& key_value, MapBaseMapNode<K, V>* prev,
-            MapBaseMapNode<K, V>* next, size_t size)
+    MapNode(std::pair<const K, V>&& key_value, MapBaseNode<K, V>* prev, MapBaseNode<K, V>* next,
+            size_t size)
         : key_value_(std::move(key_value)), prev_(prev), next_(next), size_(size) {
     }
     template <typename P>
-    MapNode(P&& key_value, MapBaseMapNode<K, V>* prev, MapBaseMapNode<K, V>* next, size_t size)
+    MapNode(P&& key_value, MapBaseNode<K, V>* prev, MapBaseNode<K, V>* next, size_t size)
         : key_value_(std::forward<P>(key_value)), prev_(prev), next_(next), size_(size) {
     }
     const K& GetKey() const noexcept {
@@ -102,16 +103,16 @@ public:
     MapNode<K, V>*& GetParent() noexcept {
         return parent_;
     }
-    MapBaseMapNode<K, V>* GetPrev() const noexcept {
+    MapBaseNode<K, V>* GetPrev() const noexcept {
         return prev_;
     }
-    MapBaseMapNode<K, V>*& GetPrev() noexcept {
+    MapBaseNode<K, V>*& GetPrev() noexcept {
         return prev_;
     }
-    MapBaseMapNode<K, V>* GetNext() const noexcept {
+    MapBaseNode<K, V>* GetNext() const noexcept {
         return next_;
     }
-    MapBaseMapNode<K, V>*& GetNext() noexcept {
+    MapBaseNode<K, V>*& GetNext() noexcept {
         return next_;
     }
     size_t GetSize() const noexcept {
@@ -135,13 +136,13 @@ private:
     std::unique_ptr<MapNode<K, V>> left_;
     std::unique_ptr<MapNode<K, V>> right_;
     MapNode<K, V>* parent_ = nullptr;
-    MapBaseMapNode<K, V>* prev_ = nullptr;
-    MapBaseMapNode<K, V>* next_ = nullptr;
+    MapBaseNode<K, V>* prev_ = nullptr;
+    MapBaseNode<K, V>* next_ = nullptr;
     size_t size_ = 1;
 };
 
 template <typename K, typename V>
-class EndMapNode : public MapBaseMapNode<K, V> {
+class EndMapNode : public MapBaseNode<K, V> {
 
     EndMapNode() noexcept = default;
     EndMapNode(const EndMapNode& other) = delete;
@@ -150,7 +151,7 @@ class EndMapNode : public MapBaseMapNode<K, V> {
     EndMapNode& operator=(EndMapNode&& other) noexcept = default;
     ~EndMapNode() noexcept = default;
 
-    EndMapNode(MapBaseMapNode<K, V>* prev, MapBaseMapNode<K, V>* next) noexcept
+    EndMapNode(MapBaseNode<K, V>* prev, MapBaseNode<K, V>* next) noexcept
         : prev_(prev), next_(next) {
     }
     const K& GetKey() const {
@@ -180,16 +181,16 @@ class EndMapNode : public MapBaseMapNode<K, V> {
     MapNode<K, V>*& GetParent() {
         throw std::out_of_range("Out of range!");
     }
-    MapBaseMapNode<K, V>* GetPrev() const noexcept {
+    MapBaseNode<K, V>* GetPrev() const noexcept {
         return prev_;
     }
-    MapBaseMapNode<K, V>*& GetPrev() noexcept {
+    MapBaseNode<K, V>*& GetPrev() noexcept {
         return prev_;
     }
-    MapBaseMapNode<K, V>* GetNext() const noexcept {
+    MapBaseNode<K, V>* GetNext() const noexcept {
         return next_;
     }
-    MapBaseMapNode<K, V>*& GetNext() noexcept {
+    MapBaseNode<K, V>*& GetNext() noexcept {
         return next_;
     }
     size_t GetSize() const {
@@ -209,8 +210,8 @@ class EndMapNode : public MapBaseMapNode<K, V> {
     }
 
 private:
-    MapBaseMapNode<K, V>* prev_ = nullptr;
-    MapBaseMapNode<K, V>* next_ = nullptr;
+    MapBaseNode<K, V>* prev_ = nullptr;
+    MapBaseNode<K, V>* next_ = nullptr;
 };
 
 template <typename K, typename V, typename Compare = std::less<K>>
@@ -231,7 +232,7 @@ public:
 
     class Iterator {
     public:
-        explicit Iterator(MapBaseMapNode<K, V>* node) noexcept : node_(node) {
+        explicit Iterator(MapBaseNode<K, V>* node) noexcept : node_(node) {
         }
         Reference operator*() const {
             return node_->GetKeyValue();
@@ -279,12 +280,12 @@ public:
                 node_ = nullptr;
             }
         }
-        MapBaseMapNode<K, V>* node_ = nullptr;
+        MapBaseNode<K, V>* node_ = nullptr;
     };
 
     class ConstIterator {
     public:
-        explicit ConstIterator(const MapBaseMapNode<K, V>* node) noexcept : node_(node) {
+        explicit ConstIterator(const MapBaseNode<K, V>* node) noexcept : node_(node) {
         }
         ConstIterator(Iterator it) noexcept : node_(it.node_) {
         }
@@ -333,12 +334,12 @@ public:
                 node_ = nullptr;
             }
         }
-        const MapBaseMapNode<K, V>* node_ = nullptr;
+        const MapBaseNode<K, V>* node_ = nullptr;
     };
 
     class ReverseIterator {
     public:
-        explicit ReverseIterator(MapBaseMapNode<K, V>* node) : node_(node) {
+        explicit ReverseIterator(MapBaseNode<K, V>* node) : node_(node) {
         }
         Reference operator*() const {
             return node_->GetKeyValue();
@@ -386,12 +387,12 @@ public:
                 node_ = nullptr;
             }
         }
-        MapBaseMapNode<K, V>* node_ = nullptr;
+        MapBaseNode<K, V>* node_ = nullptr;
     };
 
     class ConstReverseIterator {
     public:
-        explicit ConstReverseIterator(const MapBaseMapNode<K, V>* node) noexcept : node_(node) {
+        explicit ConstReverseIterator(const MapBaseNode<K, V>* node) noexcept : node_(node) {
         }
         ConstReverseIterator(ReverseIterator it) noexcept : node_(it.node_) {
         }
@@ -439,7 +440,7 @@ public:
                 node_ = nullptr;
             }
         }
-        const MapBaseMapNode<K, V>* node_ = nullptr;
+        const MapBaseNode<K, V>* node_ = nullptr;
     };
 
     MapBST() : MapBST(Compare()) {
@@ -447,13 +448,13 @@ public:
     explicit MapBST(const Compare& compare) : root_compare_(nullptr, compare) {
     }
     MapBST(const MapBST& other) {
-        MapBaseMapNode<K, V>* max_node = Copy(other);
+        MapBaseNode<K, V>* max_node = Copy(other);
         ConnectEndMapNodesAfterCopy(max_node);
     }
     MapBST& operator=(const MapBST& other) {
         if (this != std::addressof(other)) {
             Clear();
-            MapBaseMapNode<K, V>* max_node = Copy(other);
+            MapBaseNode<K, V>* max_node = Copy(other);
             ConnectEndMapNodesAfterCopy(max_node);
         }
         return *this;
@@ -683,7 +684,7 @@ private:
         }
     }
 
-    void ConnectEndMapNodesAfterCopy(MapBaseMapNode<K, V>* max_node) {
+    void ConnectEndMapNodesAfterCopy(MapBaseNode<K, V>* max_node) {
         if (GetRoot() != nullptr) {
             max_node->GetNext() = std::addressof(end_node_);
             end_node_.GetPrev() = max_node;
@@ -740,7 +741,7 @@ private:
     }
 
     std::unique_ptr<MapNode<K, V>> CreateCopied(MapNode<K, V>* top_other_node,
-                                                MapBaseMapNode<K, V>*& prev_node) {
+                                                MapBaseNode<K, V>*& prev_node) {
         auto node =
             std::make_unique<MapNode<K, V>>(top_other_node->GetKey(), top_other_node->GetValue(),
                                             nullptr, nullptr, top_other_node->GetSize());
@@ -802,7 +803,7 @@ private:
                        std::stack<std::tuple<MapNode<K, V>*, bool, bool>>& other_nodes,
                        std::stack<std::unique_ptr<MapNode<K, V>>>& nodes,
                        MapNode<K, V>* top_other_node, bool visit_left, bool visit_right,
-                       MapBaseMapNode<K, V>*& prev_node) {
+                       MapBaseNode<K, V>*& prev_node) {
         if (LeftNotVisited(top_other_node, visit_left) && RightNull(top_other_node)) {
             LNVRN(other_nodes, top_other_node);
         } else if (LeftNotVisited(top_other_node, visit_left) &&
@@ -839,11 +840,11 @@ private:
         }
     }
 
-    MapBaseMapNode<K, V>* Copy(const MapBST& other) {
+    MapBaseNode<K, V>* Copy(const MapBST& other) {
         if (other.Empty()) {
             return nullptr;
         }
-        MapBaseMapNode<K, V>* prev_node = std::addressof(rend_node_);
+        MapBaseNode<K, V>* prev_node = std::addressof(rend_node_);
         std::stack<std::tuple<MapNode<K, V>*, bool, bool>> other_nodes;
         std::stack<std::unique_ptr<MapNode<K, V>>> nodes;
         other_nodes.push({other.GetRootPtr(), LEFT_NOT_VISITED, RIGHT_NOT_VISITED});
@@ -858,8 +859,7 @@ private:
         return prev_node;
     }
 
-    void ConnectPrevNext(MapNode<K, V>* node, MapBaseMapNode<K, V>* prev,
-                         MapBaseMapNode<K, V>* next) {
+    void ConnectPrevNext(MapNode<K, V>* node, MapBaseNode<K, V>* prev, MapBaseNode<K, V>* next) {
         node->GetNext() = next;
         next->GetPrev() = node;
         node->GetPrev() = prev;
@@ -884,8 +884,8 @@ private:
         MapNode<K, V>* node = GetRootPtr();
         MapNode<K, V>* parent = nullptr;
         bool left = false;
-        MapBaseMapNode<K, V>* current_prev = std::addressof(rend_node_);
-        MapBaseMapNode<K, V>* current_next = std::addressof(end_node_);
+        MapBaseNode<K, V>* current_prev = std::addressof(rend_node_);
+        MapBaseNode<K, V>* current_next = std::addressof(end_node_);
 
         while (true) {
             if ((node == nullptr) && (parent == nullptr)) {
@@ -956,5 +956,5 @@ void Swap(const MapBST<K, V, Compare>& lhs, const MapBST<K, V, Compare>& rhs) {
 
 template <typename K, typename V, typename Compare>
 bool operator!=(const MapBST<K, V, Compare>& lhs, const MapBST<K, V, Compare>& rhs) {
-    return (lhs != rhs);
+    return !(lhs == rhs);
 }

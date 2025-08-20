@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <limits>
 #include <memory>
@@ -21,6 +22,7 @@ class SetNode;
 
 template <typename K>
 class SetBaseNode {
+public:
     SetBaseNode() noexcept = default;
     SetBaseNode(const SetBaseNode& other) = delete;
     SetBaseNode& operator=(const SetBaseNode& other) = delete;
@@ -507,7 +509,7 @@ public:
         if (node == nullptr) {
             return End();
         }
-        if (Equivalent(node->GetKey(), key)) {
+        if (Equivalent(node->GetKey(), key, KeyCompare())) {
             return ConstIterator{node->GetNext()};
         }
         return ConstIterator{node};
@@ -1025,7 +1027,6 @@ private:
         size_t current_size = GetNumInSubTree(node);
 
         while (node != nullptr) {
-            // std::cout << node->GetKey() << " " << current_size << "\n";
             if (Equivalent(key, node->GetKey(), KeyCompare())) {
                 return current_size;
             }
@@ -1038,7 +1039,6 @@ private:
                 current_size += GetNumInSubTree(node);
             }
         }
-        // std::cout << current_size << "\n";
         return current_size;
     }
 
@@ -1070,5 +1070,5 @@ void Swap(const SetBST<K, Compare>& lhs, const SetBST<K, Compare>& rhs) {
 
 template <typename K, typename V, typename Compare>
 bool operator!=(const SetBST<K, Compare>& lhs, const SetBST<K, Compare>& rhs) {
-    return (lhs != rhs);
+    return !(lhs == rhs);
 }
