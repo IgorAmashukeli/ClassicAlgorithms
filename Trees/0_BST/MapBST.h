@@ -43,8 +43,6 @@ public:
     virtual MapBaseNode<K, V>*& GetPrev() noexcept = 0;
     virtual MapBaseNode<K, V>* GetNext() const noexcept = 0;
     virtual MapBaseNode<K, V>*& GetNext() noexcept = 0;
-    virtual size_t GetSize() const = 0;
-    virtual size_t& GetSize() = 0;
     virtual const std::pair<const K, V>& GetKeyValue() const = 0;
     virtual std::pair<const K, V>& GetKeyValue() = 0;
     virtual bool IsMapEndNode() const noexcept = 0;
@@ -60,21 +58,19 @@ public:
     MapNode& operator=(MapNode&& other) = delete;
     ~MapNode() = default;
 
-    MapNode(const K& key, const V& value, MapBaseNode<K, V>* prev, MapBaseNode<K, V>* next,
-            size_t size)
-        : key_value_(key, value), prev_(prev), next_(next), size_(size) {
+    MapNode(const K& key, const V& value, MapBaseNode<K, V>* prev, MapBaseNode<K, V>* next)
+        : key_value_(key, value), prev_(prev), next_(next) {
     }
     MapNode(const std::pair<const K, V>& key_value, MapBaseNode<K, V>* prev,
-            MapBaseNode<K, V>* next, size_t size)
-        : key_value_(key_value), prev_(prev), next_(next), size_(size) {
+            MapBaseNode<K, V>* next)
+        : key_value_(key_value), prev_(prev), next_(next) {
     }
-    MapNode(std::pair<const K, V>&& key_value, MapBaseNode<K, V>* prev, MapBaseNode<K, V>* next,
-            size_t size)
-        : key_value_(std::move(key_value)), prev_(prev), next_(next), size_(size) {
+    MapNode(std::pair<const K, V>&& key_value, MapBaseNode<K, V>* prev, MapBaseNode<K, V>* next)
+        : key_value_(std::move(key_value)), prev_(prev), next_(next) {
     }
     template <typename P>
-    MapNode(P&& key_value, MapBaseNode<K, V>* prev, MapBaseNode<K, V>* next, size_t size)
-        : key_value_(std::forward<P>(key_value)), prev_(prev), next_(next), size_(size) {
+    MapNode(P&& key_value, MapBaseNode<K, V>* prev, MapBaseNode<K, V>* next)
+        : key_value_(std::forward<P>(key_value)), prev_(prev), next_(next) {
     }
     const K& GetKey() const noexcept {
         return key_value_.first;
@@ -115,12 +111,6 @@ public:
     MapBaseNode<K, V>*& GetNext() noexcept {
         return next_;
     }
-    size_t GetSize() const noexcept {
-        return size_;
-    }
-    size_t& GetSize() noexcept {
-        return size_;
-    }
     const std::pair<const K, V>& GetKeyValue() const noexcept {
         return key_value_;
     }
@@ -138,7 +128,6 @@ private:
     MapNode<K, V>* parent_ = nullptr;
     MapBaseNode<K, V>* prev_ = nullptr;
     MapBaseNode<K, V>* next_ = nullptr;
-    size_t size_ = 1;
 };
 
 template <typename K, typename V>
@@ -193,12 +182,6 @@ public:
     MapBaseNode<K, V>*& GetNext() noexcept {
         return next_;
     }
-    size_t GetSize() const {
-        throw std::out_of_range("Out of range!");
-    }
-    size_t& GetSize() {
-        throw std::out_of_range("Out of range!");
-    }
     const std::pair<const K, V>& GetKeyValue() const {
         throw std::out_of_range("Out of range!");
     }
@@ -229,6 +212,8 @@ public:
     using Pointer = ValueType*;
     using ConstReference = const ValueType&;
     using ConstPointer = const ValueType*;
+
+    class ConstIterator;
 
     class Iterator {
     public:
@@ -340,6 +325,8 @@ public:
         }
         const MapBaseNode<K, V>* node_ = nullptr;
     };
+
+    class ConstReverseIterator;
 
     class ReverseIterator {
     public:
@@ -456,36 +443,30 @@ public:
     explicit MapBST(const Compare& compare) : root_compare_(nullptr, compare) {
     }
     MapBST(const MapBST& other) {
-        MapBaseNode<K, V>* max_node = Copy(other);
-        ConnectEndMapNodesAfterCopy(max_node);
+        Copy(other);
     }
     MapBST& operator=(const MapBST& other) {
-        if (this != std::addressof(other)) {
-            Clear();
-            MapBaseNode<K, V>* max_node = Copy(other);
-            ConnectEndMapNodesAfterCopy(max_node);
-        }
-        return *this;
+        return *this = MapBST(other);
     }
     MapBST(MapBST&& other) noexcept {
         Swap(other);
     }
     MapBST& operator=(MapBST&& other) noexcept {
-        if (this != std::addressof(other)) {
-            Swap(other);
-            other.Clear();
-        }
+        MapBST tmp = std::move(other);
+        Swap(tmp);
         return *this;
     }
     ~MapBST() = default;
 
     void Clear() noexcept {
         GetRoot() = nullptr;
+        size_ = 0;
         end_node_.GetNext() = std::addressof(end_node_);
         end_node_.GetPrev() = std::addressof(end_node_);
     }
     void Swap(MapBST& other) {
         std::swap(GetRoot(), other.GetRoot());
+        std::swap(size_, other.size_);
         ConnectEndMapNodesAfterSwap(other);
     }
     std::pair<Iterator, bool> Insert(const ValueType& key_value) {
@@ -619,12 +600,9 @@ public:
     }
 
     size_t Size() const noexcept {
-        if (GetRoot() == nullptr) {
-            return 0;
-        }
-        return GetRoot()->GetSize();
+        return size_;
     }
-    size_t MaxSize() const noexcept {
+    static constexpr size_t MaxSize() noexcept {
         return (std::numeric_limits<std::ptrdiff_t>::max() / sizeof(MapNode<K, V>));
     }
     bool Empty() const noexcept {
@@ -779,9 +757,8 @@ private:
 
     std::unique_ptr<MapNode<K, V>> CreateCopied(MapNode<K, V>* top_other_node,
                                                 MapBaseNode<K, V>*& prev_node) {
-        auto node =
-            std::make_unique<MapNode<K, V>>(top_other_node->GetKey(), top_other_node->GetValue(),
-                                            nullptr, nullptr, top_other_node->GetSize());
+        auto node = std::make_unique<MapNode<K, V>>(top_other_node->GetKey(),
+                                                    top_other_node->GetValue(), nullptr, nullptr);
         node->GetPrev() = prev_node;
         prev_node->GetNext() = node.get();
         prev_node = node.get();
@@ -877,9 +854,9 @@ private:
         }
     }
 
-    MapBaseNode<K, V>* Copy(const MapBST& other) {
+    void Copy(const MapBST& other) {
         if (other.Empty()) {
-            return nullptr;
+            return;
         }
         MapBaseNode<K, V>* prev_node = std::addressof(end_node_);
         std::stack<std::tuple<MapNode<K, V>*, bool, bool>> other_nodes;
@@ -893,7 +870,8 @@ private:
             CopyIteration(other, other_nodes, nodes, top_other_node, visit_left, visit_right,
                           prev_node);
         }
-        return prev_node;
+        ConnectEndMapNodesAfterCopy(prev_node);
+        size_ = other.size_;
     }
 
     void ConnectPrevNext(MapNode<K, V>* node, MapBaseNode<K, V>* prev, MapBaseNode<K, V>* next) {
@@ -903,11 +881,8 @@ private:
         prev->GetNext() = node;
     }
 
-    void IncreaseSizeInBranch(MapNode<K, V>* node) {
-        while (node != nullptr) {
-            ++(node->GetSize());
-            node = node->GetParent();
-        }
+    void IncreaseSize() {
+        ++size_;
     }
 
     template <typename P>
@@ -922,24 +897,25 @@ private:
             if ((node == nullptr) && (parent == nullptr)) {
                 GetRoot() = std::make_unique<MapNode<K, V>>(std::forward<P>(key_value),
                                                             std::addressof(end_node_),
-                                                            std::addressof(end_node_), 1);
+                                                            std::addressof(end_node_));
                 ConnectPrevNext(GetRootPtr(), current_prev, current_next);
+                IncreaseSize();
                 return {Iterator(GetRootPtr()), true};
             }
             if ((node == nullptr) && (parent != nullptr) && left) {
-                parent->GetLeft() = std::make_unique<MapNode<K, V>>(std::forward<P>(key_value),
-                                                                    nullptr, nullptr, 1);
+                parent->GetLeft() =
+                    std::make_unique<MapNode<K, V>>(std::forward<P>(key_value), nullptr, nullptr);
                 parent->GetLeft()->GetParent() = parent;
                 ConnectPrevNext(parent->GetLeft().get(), current_prev, current_next);
-                IncreaseSizeInBranch(parent);
+                IncreaseSize();
                 return {Iterator(parent->GetLeft().get()), true};
             }
             if ((node == nullptr) && (parent != nullptr) && !left) {
-                parent->GetRight() = std::make_unique<MapNode<K, V>>(std::forward<P>(key_value),
-                                                                     nullptr, nullptr, 1);
+                parent->GetRight() =
+                    std::make_unique<MapNode<K, V>>(std::forward<P>(key_value), nullptr, nullptr);
                 parent->GetRight()->GetParent() = parent;
                 ConnectPrevNext(parent->GetRight().get(), current_prev, current_next);
-                IncreaseSizeInBranch(parent);
+                IncreaseSize();
                 return {Iterator(parent->GetRight().get()), true};
             }
             if ((node != nullptr) && Equivalent(node->GetKey(), key_value.first, KeyCompare())) {
@@ -961,6 +937,7 @@ private:
 
     CompressedPair<std::unique_ptr<MapNode<K, V>>, Compare> root_compare_;
     EndMapNode<K, V> end_node_{std::addressof(end_node_), std::addressof(end_node_)};
+    size_t size_ = 0;
 };
 
 template <typename K, typename V, typename Compare>
