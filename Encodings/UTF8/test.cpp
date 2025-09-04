@@ -298,14 +298,6 @@ static int CountMaximalSubparts(std::string_view s) {
     return count;
 }
 
-void Print(std::string_view invalid_bytes) {
-    std::cout << invalid_bytes.size() << "\n";
-    for (size_t i = 0; i < invalid_bytes.size(); ++i) {
-        printf("0x%02X ", static_cast<uint8_t>(invalid_bytes[i]));
-    }
-    std::cout << "\n";
-}
-
 // ======================== Exact placement test ========================
 static void TestReplacementPlacement(std::string_view bytes) {
     // Skip entirely valid UTF-8 inputs, only test truly invalid sequences
@@ -317,11 +309,6 @@ static void TestReplacementPlacement(std::string_view bytes) {
     int repl_count = CountReplacementCharacters(decoded);
     int expected_count = CountMaximalSubparts(bytes);
 
-    if (repl_count != expected_count) {
-        Print(bytes);
-        std::cout << "Replacement count: " << repl_count << "\n";
-        std::cout << "Expected count   : " << expected_count << "\n";
-    }
     assert(repl_count == expected_count &&
            "Number of replacement characters must match number of invalid maximal subparts");
 }
