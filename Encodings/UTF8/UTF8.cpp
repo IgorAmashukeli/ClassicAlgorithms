@@ -1,11 +1,7 @@
 #include "UTF8.h"
 
-struct utf8::DecodeResult {
-    char32_t codepoint;
-    size_t additional_shift;
-};
-
 namespace {
+
 constexpr char32_t kReplacementCharacter = 0xFFFDu;
 constexpr uint32_t kMaxPoint = 0x10FFFFu;
 constexpr uint32_t kMinSurrogateHalf = 0xD800u;
@@ -26,6 +22,11 @@ constexpr uint8_t kAddMask = 0x3F;
 constexpr int kShiftOne = 6;
 constexpr int kShiftTwo = 12;
 constexpr int kShiftThree = 18;
+
+struct DecodeResult {
+    char32_t codepoint;
+    size_t additional_shift;
+};
 
 bool IsInvalid(uint32_t x) {
     return (x > kMaxPoint) || (x >= kMinSurrogateHalf && x <= kMaxSurrogateHalf);
@@ -122,7 +123,7 @@ bool IsUTF8FourBytes(std::string_view s, size_t i) {
            IsUTF8AdditionalByte(s[i + 2]) && IsUTF8AdditionalByte(s[i + 3]);
 }
 
-utf8::DecodeResult CreateFromOneByte(std::string_view s, size_t i) {
+DecodeResult CreateFromOneByte(std::string_view s, size_t i) {
     uint8_t x = static_cast<uint8_t>(s[i]);
     uint32_t res = static_cast<uint32_t>(x);
     if (IsInvalid(res)) {
@@ -131,7 +132,7 @@ utf8::DecodeResult CreateFromOneByte(std::string_view s, size_t i) {
     return {static_cast<char32_t>(res), 0};
 }
 
-utf8::DecodeResult CreateFromTwoBytes(std::string_view s, size_t i) {
+DecodeResult CreateFromTwoBytes(std::string_view s, size_t i) {
     uint8_t x = static_cast<uint8_t>(s[i]) & kStartTwoMask;
     uint8_t y = static_cast<uint8_t>(s[i + 1]) & kAddMask;
     uint32_t res = (static_cast<uint32_t>(x) << kShiftOne) | (static_cast<uint32_t>(y));
@@ -141,7 +142,7 @@ utf8::DecodeResult CreateFromTwoBytes(std::string_view s, size_t i) {
     return {static_cast<char32_t>(res), 1};
 }
 
-utf8::DecodeResult CreateFromThreeBytes(std::string_view s, size_t i) {
+DecodeResult CreateFromThreeBytes(std::string_view s, size_t i) {
     uint8_t x = static_cast<uint8_t>(s[i]) & kStartThreeMask;
     uint8_t y = static_cast<uint8_t>(s[i + 1]) & kAddMask;
     uint8_t z = static_cast<uint8_t>(s[i + 2]) & kAddMask;
@@ -153,7 +154,7 @@ utf8::DecodeResult CreateFromThreeBytes(std::string_view s, size_t i) {
     return {static_cast<char32_t>(res), 2};
 }
 
-utf8::DecodeResult CreateFromFourBytes(std::string_view s, size_t i) {
+DecodeResult CreateFromFourBytes(std::string_view s, size_t i) {
     uint8_t x = static_cast<uint8_t>(s[i]) & kStartFourMask;
     uint8_t y = static_cast<uint8_t>(s[i + 1]) & kAddMask;
     uint8_t z = static_cast<uint8_t>(s[i + 2]) & kAddMask;
@@ -167,11 +168,11 @@ utf8::DecodeResult CreateFromFourBytes(std::string_view s, size_t i) {
     return {static_cast<char32_t>(res), 3};
 }
 
-utf8::DecodeResult CreateFromInvalid(std::string_view s, size_t i) {
+DecodeResult CreateFromInvalid(std::string_view s, size_t i) {
     return {kReplacementCharacter, FindShift(s, i) - 1};
 }
 
-utf8::DecodeResult CreateFromBytes(std::string_view s, size_t i) {
+DecodeResult CreateFromBytes(std::string_view s, size_t i) {
     if (IsUTF8OneByte(s, i)) {
         return CreateFromOneByte(s, i);
     } else if (IsUTF8TwoBytes(s, i)) {
