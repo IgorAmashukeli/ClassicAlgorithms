@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/utf8_test.dir/link.d CMakeFiles/utf8_test.dir/UTF8.cpp.o CMakeFiles/utf8_test.dir/test.cpp.o -o utf8_test

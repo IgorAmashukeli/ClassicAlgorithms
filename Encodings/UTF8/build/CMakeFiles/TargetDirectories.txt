@@ -1,3 +1,0 @@
-/home/igor/Programming/Programming_old/Programming/Computer/ClassicAlgorithms/Encodings/UTF8/build/CMakeFiles/utf8_test.dir
-/home/igor/Programming/Programming_old/Programming/Computer/ClassicAlgorithms/Encodings/UTF8/build/CMakeFiles/edit_cache.dir
-/home/igor/Programming/Programming_old/Programming/Computer/ClassicAlgorithms/Encodings/UTF8/build/CMakeFiles/rebuild_cache.dir
