@@ -1039,5 +1039,5 @@ int main() {
     TestSwapOuter();
     TestLogarithmicAVLHeightProperty();
 
-    std::cout << "\nAll tests passed\n";
+    std::cout << "\nAll tests for set passed\n\n";
 }

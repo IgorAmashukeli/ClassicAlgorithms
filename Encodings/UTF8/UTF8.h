@@ -1,95 +1,109 @@
 #pragma once
 #include <cstdint>
 #include <string>
-#include <iostream>
 
+// UTF8 Encoder and Decoder
 struct UTF8 {
+    // Forward declaration
+private:
+    struct DecodeResult;
+
+public:
+    // Uses Replacement Character for Invalid Char32
     static std::string Encode(std::u32string_view s) {
-        std::cout << "cheap\n";
         std::string result;
         for (size_t i = 0; i < s.size(); ++i) {
-            if (IsInvalid(s[i])) {
-                result += EncodeCodePoint(kReplacementCharacter);
-            } else {
-                result += EncodeCodePoint(s[i]);
-            }
+            result += EncodeCodePoint(s[i]);
         }
         return result;
     }
 
+    // Uses Maximal Subpart Replacement politics
     static std::u32string Decode(std::string_view s) {
         std::u32string result;
         for (size_t i = 0; i < s.size(); ++i) {
-            if (IsUTF8OneByte(s[i])) {
-                result.push_back(CreateFromOneByte(s[i]));
-            } else if (i + 1 < s.size() && IsUTF8TwoBytes(s[i], s[i + 1])) {
-                result.push_back(CreateFromTwoBytes(s[i], s[i + 1]));
-                i += 1;
-            } else if (i + 2 < s.size() && IsUTF8ThreeBytes(s[i], s[i + 1], s[i + 2])) {
-                result.push_back(CreateFromThreeBytes(s[i], s[i + 1], s[i + 2]));
-                i += 2;
-            } else if (i + 3 < s.size() && IsUTF8FourBytes(s[i], s[i + 1], s[i + 2], s[i + 3])) {
-                result.push_back(CreateFromFourBytes(s[i], s[i + 1], s[i + 2], s[i + 3]));
-                i += 3;
-            } else {
-                result.push_back(kReplacementCharacter);
-                i += (FindShift(s, i) - 1);
-            }
+            auto [codepoint, additional_shift] = CreateFromBytes(s, i);
+            result.push_back(codepoint);
+            i += additional_shift;
         }
         return result;
     }
 
+    // Uses Replacement Character for Invalid Char32
     static std::string Encode(std::initializer_list<char32_t> il) {
         return Encode(std::u32string(il));
     }
+    // Uses Maximal Subpart Replacement Politic
     static std::u32string Decode(std::initializer_list<char> il) {
         return Decode(std::string(il));
     }
 
+    static char32_t GetReplacementCharacter() {
+        return kReplacementCharacter;
+    }
+
 private:
-    static char32_t CreateFromOneByte(char ch_x) {
-        uint8_t x = static_cast<uint8_t>(ch_x);
+    static DecodeResult CreateFromBytes(std::string_view s, size_t i) {
+        if (IsUTF8OneByte(s, i)) {
+            return CreateFromOneByte(s, i);
+        } else if (IsUTF8TwoBytes(s, i)) {
+            return CreateFromTwoBytes(s, i);
+        } else if (IsUTF8ThreeBytes(s, i)) {
+            return CreateFromThreeBytes(s, i);
+        } else if (IsUTF8FourBytes(s, i)) {
+            return CreateFromFourBytes(s, i);
+        } else {
+            return CreateFromInvalid(s, i);
+        }
+    }
+
+    static DecodeResult CreateFromOneByte(std::string_view s, size_t i) {
+        uint8_t x = static_cast<uint8_t>(s[i]);
         uint32_t res = static_cast<uint32_t>(x);
         if (IsInvalid(res)) {
-            return kReplacementCharacter;
+            return {kReplacementCharacter, 0};
         }
-        return static_cast<char32_t>(res);
+        return {static_cast<char32_t>(res), 0};
     }
 
-    static char32_t CreateFromTwoBytes(char ch_x, char ch_y) {
-        uint8_t x = static_cast<uint8_t>(ch_x) & kStartTwoMask;
-        uint8_t y = static_cast<uint8_t>(ch_y) & kAddMask;
+    static DecodeResult CreateFromTwoBytes(std::string_view s, size_t i) {
+        uint8_t x = static_cast<uint8_t>(s[i]) & kStartTwoMask;
+        uint8_t y = static_cast<uint8_t>(s[i + 1]) & kAddMask;
         uint32_t res = (static_cast<uint32_t>(x) << kShiftOne) | (static_cast<uint32_t>(y));
         if (IsInvalid(res) || IsOverLong(res, 2)) {
-            return kReplacementCharacter;
+            return {kReplacementCharacter, 1};
         }
-        return static_cast<char32_t>(res);
+        return {static_cast<char32_t>(res), 1};
     }
 
-    static char32_t CreateFromThreeBytes(char ch_x, char ch_y, char ch_z) {
-        uint8_t x = static_cast<uint8_t>(ch_x) & kStartThreeMask;
-        uint8_t y = static_cast<uint8_t>(ch_y) & kAddMask;
-        uint8_t z = static_cast<uint8_t>(ch_z) & kAddMask;
+    static DecodeResult CreateFromThreeBytes(std::string_view s, size_t i) {
+        uint8_t x = static_cast<uint8_t>(s[i]) & kStartThreeMask;
+        uint8_t y = static_cast<uint8_t>(s[i + 1]) & kAddMask;
+        uint8_t z = static_cast<uint8_t>(s[i + 2]) & kAddMask;
         uint32_t res = (static_cast<uint32_t>(x) << kShiftTwo) |
                        (static_cast<uint32_t>(y) << kShiftOne) | static_cast<uint32_t>(z);
         if (IsInvalid(res) || IsOverLong(res, 3)) {
-            return kReplacementCharacter;
+            return {kReplacementCharacter, 2};
         }
-        return static_cast<char32_t>(res);
+        return {static_cast<char32_t>(res), 2};
     }
 
-    static char32_t CreateFromFourBytes(char ch_x, char ch_y, char ch_z, char ch_u) {
-        uint8_t x = static_cast<uint8_t>(ch_x) & kStartFourMask;
-        uint8_t y = static_cast<uint8_t>(ch_y) & kAddMask;
-        uint8_t z = static_cast<uint8_t>(ch_z) & kAddMask;
-        uint8_t u = static_cast<uint8_t>(ch_u) & kAddMask;
+    static DecodeResult CreateFromFourBytes(std::string_view s, size_t i) {
+        uint8_t x = static_cast<uint8_t>(s[i]) & kStartFourMask;
+        uint8_t y = static_cast<uint8_t>(s[i + 1]) & kAddMask;
+        uint8_t z = static_cast<uint8_t>(s[i + 2]) & kAddMask;
+        uint8_t u = static_cast<uint8_t>(s[i + 3]) & kAddMask;
         uint32_t res = (static_cast<uint32_t>(x) << kShiftThree) |
                        (static_cast<uint32_t>(y) << kShiftTwo) |
                        (static_cast<uint32_t>(z) << kShiftOne) | (static_cast<uint32_t>(u));
         if (IsInvalid(res) || IsOverLong(res, 4)) {
-            return kReplacementCharacter;
+            return {kReplacementCharacter, 3};
         }
-        return static_cast<char32_t>(res);
+        return {static_cast<char32_t>(res), 3};
+    }
+
+    static DecodeResult CreateFromInvalid(std::string_view s, size_t i) {
+        return {kReplacementCharacter, FindShift(s, i) - 1};
     }
 
     static std::string CreateTwoBytes(uint32_t x) {
@@ -129,6 +143,9 @@ private:
     }
 
     static std::string EncodeCodePoint(char32_t ch_x) {
+        if (IsInvalid(ch_x)) {
+            return EncodeCodePoint(kReplacementCharacter);
+        }
         if (ch_x < kTwoBytesMin) {
             return {static_cast<char>(ch_x)};
         }
@@ -199,7 +216,8 @@ private:
         return (x > kMaxPoint) || (x >= kMinSurrogateHalf && x <= kMaxSurrogateHalf);
     }
 
-    static bool IsUTF8OneByte(char ch_x) {
+    static bool IsUTF8OneByte(std::string_view s, size_t i) {
+        char ch_x = s[i];
         uint8_t x = static_cast<uint8_t>(ch_x);
         return ((x & kMaskOneByte) == kMinByte);
     }
@@ -224,18 +242,24 @@ private:
         return ((x & kMaskFourBytes) == kResFourBytes);
     }
 
-    static bool IsUTF8TwoBytes(char a, char b) {
-        return IsUTF8StartTwoByte(a) && IsUTF8AdditionalByte(b);
+    static bool IsUTF8TwoBytes(std::string_view s, size_t i) {
+        return i + 1 < s.size() && IsUTF8StartTwoByte(s[i]) && IsUTF8AdditionalByte(s[i + 1]);
     }
 
-    static bool IsUTF8ThreeBytes(char a, char b, char c) {
-        return IsUTF8StartThreeByte(a) && IsUTF8AdditionalByte(b) && IsUTF8AdditionalByte(c);
+    static bool IsUTF8ThreeBytes(std::string_view s, size_t i) {
+        return i + 2 < s.size() && IsUTF8StartThreeByte(s[i]) && IsUTF8AdditionalByte(s[i + 1]) &&
+               IsUTF8AdditionalByte(s[i + 2]);
     }
 
-    static bool IsUTF8FourBytes(char a, char b, char c, char d) {
-        return IsUTF8StartFourByte(a) && IsUTF8AdditionalByte(b) && IsUTF8AdditionalByte(c) &&
-               IsUTF8AdditionalByte(d);
+    static bool IsUTF8FourBytes(std::string_view s, size_t i) {
+        return i + 3 < s.size() && IsUTF8StartFourByte(s[i]) && IsUTF8AdditionalByte(s[i + 1]) &&
+               IsUTF8AdditionalByte(s[i + 2]) && IsUTF8AdditionalByte(s[i + 3]);
     }
+
+    struct DecodeResult {
+        char32_t codepoint;
+        size_t additional_shift;
+    };
 
     static constexpr char32_t kReplacementCharacter = 0xFFFDu;
     static constexpr uint32_t kMaxPoint = 0x10FFFFu;

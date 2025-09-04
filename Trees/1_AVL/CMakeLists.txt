@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Enable sanitizers in debug mode
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_options(
         -fsanitize=undefined
         -fsanitize=address
@@ -20,4 +20,6 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 # Your executable
-add_executable(SetAVL.h class_tests.cpp)
+add_executable(set_tests set_tests.cpp)
+add_executable(map_tests map_tests.cpp)
+

@@ -20,4 +20,5 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 # Your executable
-add_executable(BST.h tests.cpp)
+add_executable(set_tests set_tests.cpp)
+add_executable(map_tests map_tests.cpp)

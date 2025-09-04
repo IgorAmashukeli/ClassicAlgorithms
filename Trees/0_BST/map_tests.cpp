@@ -1009,5 +1009,5 @@ int main() {
     TestOperatorNotEqual();
     TestSwapOuter();
 
-    std::cout << "\nAll tests passed\n";
+    std::cout << "\nAll tests for map passed\n";
 }

@@ -1079,5 +1079,5 @@ int main() {
     TestSwapOuter();
     TestLogarithmicAVLHeightProperty();
 
-    std::cout << "\nAll tests passed\n";
+    std::cout << "\nAll tests for map passed\n";
 }
