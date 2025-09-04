@@ -1,9 +1,11 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <iostream>
 
 struct UTF8 {
     static std::string Encode(std::u32string_view s) {
+        std::cout << "cheap\n";
         std::string result;
         for (size_t i = 0; i < s.size(); ++i) {
             if (IsInvalid(s[i])) {
@@ -35,6 +37,13 @@ struct UTF8 {
             }
         }
         return result;
+    }
+
+    static std::string Encode(std::initializer_list<char32_t> il) {
+        return Encode(std::u32string(il));
+    }
+    static std::u32string Decode(std::initializer_list<char> il) {
+        return Decode(std::string(il));
     }
 
 private:
@@ -120,14 +129,14 @@ private:
     }
 
     static std::string EncodeCodePoint(char32_t ch_x) {
-        if (ch_x <= kTwoBytesMin) {
+        if (ch_x < kTwoBytesMin) {
             return {static_cast<char>(ch_x)};
         }
-        if (ch_x <= kThreeBytesMin) {
+        if (ch_x < kThreeBytesMin) {
             uint32_t x = static_cast<uint32_t>(ch_x);
             return CreateTwoBytes(x);
         }
-        if (ch_x <= kFourBytesMin) {
+        if (ch_x < kFourBytesMin) {
             uint32_t x = static_cast<uint32_t>(ch_x);
             return CreateThreeBytes(x);
         }
