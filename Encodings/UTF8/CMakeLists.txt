@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Sources
 set(SOURCES
+    UTF8.cpp
     test.cpp
 )
 
